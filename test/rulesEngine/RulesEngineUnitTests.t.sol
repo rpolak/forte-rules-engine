@@ -8,6 +8,7 @@ import "test/validation/components/components.t.sol";
 import "test/validation/rules/rules.t.sol";
 import "test/validation/rules/rulesFuzz.t.sol";
 import "test/validation/policy/policies.t.sol";
+import "test/validation/policy/PolicyCRUDFuzz.t.sol";
 // execution tests
 import "test/execution/diamondInternalFunctions/diamondInternalFunctions.t.sol";
 import "test/execution/rulesEngineInternalFunctions/rulesEngineInternalFunctions.t.sol";
@@ -34,7 +35,8 @@ contract RulesEngineUnitTests is
     instructionSet,
     foreignCalls,
     trackers,
-    storageTest
+    storageTest,
+    PolicyCRUDFuzzTest
 {
     function setUp() public {
         // Start test as the policyAdmin account

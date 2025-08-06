@@ -25,7 +25,9 @@ abstract contract policies is RulesEngineCommon {
         callingFunctions.push(bytes4(keccak256(bytes(callingFunction))));
         callingFunctionIds.push(callingFunctionId);
         ruleIds.push(new uint256[](1));
-        ruleIds[0][0] = 1;
+        ruleIds[0][0] = ruleId;
+        ruleIds.push(new uint256[](1));
+        ruleIds[0][0] = ruleId;
         vm.stopPrank();
         vm.startPrank(policyAdmin);
         vm.expectRevert("Invalid Rule");
@@ -774,5 +776,134 @@ abstract contract policies is RulesEngineCommon {
         PolicyMetadata memory data = RulesEnginePolicyFacet(address(red)).getPolicyMetadata(policyId);
         assertEq(data.policyName, policyName);
         assertEq(data.policyDescription, policyDescription);
+    }
+
+    function testRulesEngine_Unit_deletePolicy() public ifDeploymentTestsEnabled endWithStopPrank {
+        vm.startPrank(user1);
+        uint policyId = _createBlankPolicy();
+
+        uint ruleId;
+        {
+            Rule memory rule;
+            // Instruction set: LogicalOp.PLH, 0, LogicalOp.NUM, *uint256 representation of Bad Info*, LogicalOp.EQ, 0, 1
+            // Build the instruction set for the rule (including placeholders)
+            rule.instructionSet = new uint256[](7);
+            rule.instructionSet[0] = uint(LogicalOp.PLH);
+            rule.instructionSet[1] = 0;
+            rule.instructionSet[2] = uint(LogicalOp.NUM);
+            rule.instructionSet[3] = uint256(keccak256(abi.encode("Bad Info")));
+            rule.instructionSet[4] = uint(LogicalOp.EQ);
+            rule.instructionSet[5] = 0;
+            rule.instructionSet[6] = 1;
+
+            rule.rawData.argumentTypes = new ParamTypes[](1);
+            rule.rawData.dataValues = new bytes[](1);
+            rule.rawData.instructionSetIndex = new uint256[](1);
+            rule.rawData.argumentTypes[0] = ParamTypes.STR;
+            rule.rawData.dataValues[0] = abi.encode("Bad Info");
+            rule.rawData.instructionSetIndex[0] = 3;
+
+            // Build the calling function argument placeholder
+            rule.placeHolders = new Placeholder[](1);
+            rule.placeHolders[0].pType = ParamTypes.STR;
+            rule.placeHolders[0].typeSpecificIndex = 1;
+            rule.negEffects = new Effect[](1);
+            rule.negEffects[0] = effectId_revert;
+            // Save the rule
+            ruleId = RulesEngineRuleFacet(address(red)).updateRule(policyId, 0, rule, "My rule", "My way or the highway");
+        }
+
+        uint functionId;
+        bytes4 sigCallingFunction;
+        {
+            ParamTypes[] memory pTypes = new ParamTypes[](2);
+            pTypes[0] = ParamTypes.ADDR;
+            pTypes[1] = ParamTypes.UINT;
+            sigCallingFunction = bytes4(keccak256(bytes(callingFunction)));
+            functionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
+                policyId,
+                sigCallingFunction,
+                pTypes,
+                callingFunction,
+                ""
+            );
+        }
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sigCallingFunction;
+        uint256[] memory functionIds = new uint256[](1);
+        functionIds[0] = functionId;
+        uint256[][] memory _ruleIds = new uint256[][](1);
+        uint256[] memory _ids = new uint256[](1);
+        _ids[0] = ruleId;
+        _ruleIds[0] = _ids;
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyId,
+            selectors,
+            functionIds,
+            _ruleIds,
+            PolicyType.OPEN_POLICY,
+            "Test Policy",
+            "This is a test policy"
+        );
+
+        // now we can delete the policy
+        RulesEnginePolicyFacet(address(red)).deletePolicy(policyId);
+        // we check that we can't create a rule for a deleted policy
+        {
+            Rule memory rule;
+            // Instruction set: LogicalOp.PLH, 0, LogicalOp.NUM, *uint256 representation of Bad Info*, LogicalOp.EQ, 0, 1
+            // Build the instruction set for the rule (including placeholders)
+            rule.instructionSet = new uint256[](7);
+            rule.instructionSet[0] = uint(LogicalOp.PLH);
+            rule.instructionSet[1] = 0;
+            rule.instructionSet[2] = uint(LogicalOp.NUM);
+            rule.instructionSet[3] = uint256(keccak256(abi.encode("Bad Info")));
+            rule.instructionSet[4] = uint(LogicalOp.EQ);
+            rule.instructionSet[5] = 0;
+            rule.instructionSet[6] = 1;
+
+            rule.rawData.argumentTypes = new ParamTypes[](1);
+            rule.rawData.dataValues = new bytes[](1);
+            rule.rawData.instructionSetIndex = new uint256[](1);
+            rule.rawData.argumentTypes[0] = ParamTypes.STR;
+            rule.rawData.dataValues[0] = abi.encode("Bad Info");
+            rule.rawData.instructionSetIndex[0] = 3;
+
+            // Build the calling function argument placeholder
+            rule.placeHolders = new Placeholder[](1);
+            rule.placeHolders[0].pType = ParamTypes.STR;
+            rule.placeHolders[0].typeSpecificIndex = 1;
+            rule.negEffects = new Effect[](1);
+            rule.negEffects[0] = effectId_revert;
+            // we check that a rule cannot be made for the erased policy
+            vm.expectRevert("Policy does not exist");
+            ruleId = RulesEngineRuleFacet(address(red)).updateRule(1, 0, rule, "My rule", "My way or the highway");
+        }
+        // we check that we can't create a calling function for a deleted policy
+        {
+            ParamTypes[] memory pTypes = new ParamTypes[](2);
+            pTypes[0] = ParamTypes.ADDR;
+            pTypes[1] = ParamTypes.UINT;
+            sigCallingFunction = bytes4(keccak256(bytes(callingFunction)));
+            vm.expectRevert("Policy does not exist");
+            functionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
+                policyId,
+                sigCallingFunction,
+                pTypes,
+                callingFunction,
+                ""
+            );
+        }
+        // we check that we can't update a deleted policy
+        vm.expectRevert("Invalid Rule");
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyId,
+            selectors,
+            functionIds,
+            _ruleIds,
+            PolicyType.OPEN_POLICY,
+            "Test Policy",
+            "This is a test policy"
+        );
     }
 }
