@@ -63,7 +63,7 @@ jobs:
           export newVersion="[version-image]: https://img.shields.io/badge/Version-${version}-brightgreen?style=for-the-badge&logo=appveyor"
           perl -i -pe's/^\[version-image\]:.*$/$ENV{newVersion}/g' README.md
           # Update the Solidity version constant with a flexible regex
-          perl -i -pe 's/string\s+public\s+constant\s+version\s*=\s*"[^"]*"\s*;/string public constant version = "v$ENV{version}";/' ./src/engine/facets/RulesEngineProcessorFacet.sol
+          perl -i -pe "s/string\s+public\s+constant\s+version\s*=\s*\"[^\"]*\"\s*;/string public constant version = \"v$version\";/" ./src/engine/facets/RulesEngineProcessorFacet.sol
           # Validate that the replacement was successful
           if ! grep -q "string public constant version = \"v$version\";" ./src/engine/facets/RulesEngineProcessorFacet.sol; then
             echo "Error: Failed to update version in RulesEngineProcessorFacet.sol"
