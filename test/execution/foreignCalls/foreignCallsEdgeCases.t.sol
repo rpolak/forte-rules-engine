@@ -491,7 +491,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
             assertTrue(success, "Transfer should succeed");
 
             // Verify another contract was deployed and self-destructed
-            (address ruleAddr, uint256 ruleResult) = factory.getLastDeployment();
+            (, uint256 ruleResult) = factory.getLastDeployment();
             assertEq(ruleResult, transferAmount * 2 + 100, "Rule should use transfer amount");
         }
     }
