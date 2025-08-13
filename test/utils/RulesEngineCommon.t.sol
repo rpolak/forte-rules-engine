@@ -61,6 +61,7 @@ contract RulesEngineCommon is DiamondMine, Test {
     string ruleDescription = "ruleDescription";
     string policyName = "policyName";
     string policyDescription = "policyDescription";
+    ExampleERC721 nftContract;
 
     //bytes32
     bytes32 public constant EVENTTEXT = bytes32("Rules Engine Event");
@@ -828,6 +829,144 @@ contract RulesEngineCommon is DiamondMine, Test {
         RulesEnginePolicyFacet(address(red)).applyPolicy(userContractAddress, policyIds);
     }
 
+    function _setupRuleWithMintEffect(uint256 _transferValue, address _userContractAddr) public returns (address nftAddress) {
+        // setup
+        nftContract = new ExampleERC721("Token Name", "SYMB");
+        testContract2 = new ForeignCallTestContractOFAC();
+
+        // policy
+        uint256[] memory policyIds = new uint256[](1);
+        policyIds[0] = _createBlankPolicy();
+
+        uint256 callingFunctionId;
+        {
+            ParamTypes[] memory pTypes = new ParamTypes[](2);
+            pTypes[0] = ParamTypes.ADDR;
+            pTypes[1] = ParamTypes.UINT;
+            // Save the calling function
+            callingFunctionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
+                policyIds[0],
+                bytes4(bytes4(keccak256(bytes(callingFunction)))),
+                pTypes,
+                callingFunction,
+                ""
+            );
+        }
+
+        uint256 mintCallId;
+        {
+            ParamTypes[] memory fcArgs = new ParamTypes[](1);
+            fcArgs[0] = ParamTypes.ADDR;
+            ForeignCall memory fc;
+            fc.encodedIndices = new ForeignCallEncodedIndex[](1);
+            fc.encodedIndices[0].index = 2;
+            fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES; // the from, to, and msg.sender are all part of the regular encoded values (calldata)
+            fc.parameterTypes = fcArgs;
+            fc.foreignCallAddress = address(nftContract);
+            fc.signature = bytes4(keccak256(("safeMint(address)")));
+            fc.returnType = ParamTypes.VOID;
+            fc.foreignCallIndex = 1;
+            mintCallId = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyIds[0], fc, "safeMint(address)");
+        }
+        uint256 banCallId;
+        {
+            ParamTypes[] memory fcArgs = new ParamTypes[](1);
+            fcArgs[0] = ParamTypes.ADDR;
+            ForeignCall memory fc;
+            fc.encodedIndices = new ForeignCallEncodedIndex[](1);
+            fc.encodedIndices[0].index = 2;
+            fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES; // the from, to, and msg.sender are all part of the regular encoded values (calldata)
+            fc.parameterTypes = fcArgs;
+            fc.foreignCallAddress = address(testContract2);
+            fc.signature = bytes4(keccak256(("addToNaughtyList(address)")));
+            fc.returnType = ParamTypes.VOID;
+            fc.foreignCallIndex = 2;
+            banCallId = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyIds[0], fc, "addToNaughtyList(address)");
+        }
+
+        // Rule: amount > 1e18 -> mint -> transfer(address _to, uint256 amount) returns (bool)"
+        Rule memory rule;
+        // Build the foreign call placeholder
+        rule.placeHolders = new Placeholder[](1);
+        rule.placeHolders[0].pType = ParamTypes.UINT;
+        rule.placeHolders[0].typeSpecificIndex = 1; // amount
+
+        // Build the instruction set for the rule (including placeholders)
+        rule.instructionSet = new uint256[](7);
+        rule.instructionSet[0] = uint(LogicalOp.PLH); // amount
+        rule.instructionSet[1] = 0; //
+        rule.instructionSet[2] = uint(LogicalOp.NUM);
+        rule.instructionSet[3] = _transferValue;
+        rule.instructionSet[4] = uint(LogicalOp.GT);
+        rule.instructionSet[5] = 0;
+        rule.instructionSet[6] = 1;
+
+        rule.effectPlaceHolders = new Placeholder[](2);
+        rule.effectPlaceHolders[0].flags = FLAG_FOREIGN_CALL;
+        rule.effectPlaceHolders[0].typeSpecificIndex = uint128(mintCallId);
+        rule.effectPlaceHolders[1].flags = FLAG_FOREIGN_CALL;
+        rule.effectPlaceHolders[1].typeSpecificIndex = uint128(banCallId);
+
+        {
+            // positive effect
+            uint256[] memory mintEffectBytecode = new uint256[](2);
+            mintEffectBytecode[0] = uint(LogicalOp.PLH);
+            mintEffectBytecode[1] = 0; // we flag that we will be using placeholder 0
+            Effect memory mintEffect = Effect({
+                valid: true,
+                dynamicParam: false,
+                effectType: EffectTypes.EXPRESSION,
+                pType: ParamTypes.ADDR,
+                param: "",
+                text: EVENTTEXT,
+                errorMessage: "mint call failed",
+                instructionSet: mintEffectBytecode
+            });
+            rule.posEffects = new Effect[](1);
+            rule.posEffects[0] = mintEffect;
+
+            // negative effect
+            uint256[] memory banEffectBytecode = new uint256[](2);
+            banEffectBytecode[0] = uint(LogicalOp.PLH);
+            banEffectBytecode[1] = 1; // we flag that we will be using placeholder 1
+            Effect memory banEffect = Effect({
+                valid: true,
+                dynamicParam: false,
+                effectType: EffectTypes.EXPRESSION,
+                pType: ParamTypes.ADDR,
+                param: "",
+                text: EVENTTEXT,
+                errorMessage: "deny listing call failed",
+                instructionSet: banEffectBytecode
+            });
+            rule.negEffects = new Effect[](1);
+            rule.negEffects[0] = banEffect;
+        }
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policyIds[0], rule, ruleName, ruleDescription);
+
+        bytes4[] memory functions = new bytes4[](1);
+        bytes memory _callingFunction = bytes(callingFunction);
+        functions[0] = bytes4(keccak256(_callingFunction));
+        uint256[] memory functionIds = new uint256[](1);
+        functionIds[0] = callingFunctionId;
+        ruleIds.push(new uint256[](1));
+        ruleIds[0][0] = ruleId;
+        // _addRuleIdsToPolicy(policyIds[0], ruleIds);
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyIds[0],
+            functions,
+            functionIds,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            "policyName",
+            "policyDescription"
+        );
+        vm.stopPrank();
+        vm.startPrank(callingContractAdmin);
+        RulesEnginePolicyFacet(address(red)).applyPolicy(_userContractAddr, policyIds);
+        nftAddress = address(nftContract);
+    }
+
     function _setupRuleWithPosEventParams(
         bytes memory param,
         ParamTypes pType
@@ -868,13 +1007,40 @@ contract RulesEngineCommon is DiamondMine, Test {
 
         _addCallingFunctionToPolicy(policyIds[0]);
         Rule memory rule;
+        uint[] memory effectInstructionSet = new uint[](2);
+        effectInstructionSet[0] = uint(LogicalOp.PLH);
+        effectInstructionSet[1] = 0;
+        Effect memory posEffect = Effect({
+            valid: true,
+            dynamicParam: true,
+            effectType: EffectTypes.EVENT,
+            pType: ParamTypes.STR,
+            param: "",
+            text: EVENTTEXT,
+            errorMessage: "",
+            instructionSet: effectInstructionSet
+        });
+        Effect memory negEffect = Effect({
+            valid: true,
+            dynamicParam: true,
+            effectType: EffectTypes.EVENT,
+            pType: ParamTypes.STR,
+            param: "",
+            text: EVENTTEXT2,
+            errorMessage: "",
+            instructionSet: effectInstructionSet
+        });
         // Rule: amount > 4 -> event -> transfer(address _to, uint256 amount) returns (bool)"
         if (pType == ParamTypes.ADDR) {
             rule = _createGTRuleWithDynamicEventParamsAddress(4);
-            rule.posEffects[0] = effectId_event;
+            // Add a negative/positive effects
+
+            rule.posEffects[0] = posEffect;
+            rule.negEffects[0] = negEffect;
         } else {
             rule = _createGTRuleWithDynamicEventParams(4);
-            rule.posEffects[0] = effectId_event;
+            rule.posEffects[0] = posEffect;
+            rule.negEffects[0] = negEffect;
         }
 
         // Save the rule
@@ -1900,10 +2066,14 @@ contract RulesEngineCommon is DiamondMine, Test {
     }
 
     function _createGTRuleWithDynamicEventParams(uint256 _amount) public returns (Rule memory) {
+        return _createGTRuleWithDynamicEventParams(_amount, true);
+    }
+
+    function _createGTRuleWithDynamicEventParams(uint256 _amount, bool isPositiveEffect) public returns (Rule memory) {
         // Rule: amount > 4 -> revert -> transfer(address _to, uint256 amount) returns (bool)"
         Rule memory rule;
         // Set up custom event param effect.
-        effectId_event = _createEffectEventDynamicParams();
+        effectId_event = isPositiveEffect ? _createEffectEventDynamicParams() : _createEffectEventDynamicParams2();
         // Instruction set: LogicalOp.PLH, 0, LogicalOp.NUM, _amount, LogicalOp.GT, 0, 1
         rule.instructionSet = rule.instructionSet = _createInstructionSet(_amount);
         rule.placeHolders = new Placeholder[](1);
@@ -1920,12 +2090,16 @@ contract RulesEngineCommon is DiamondMine, Test {
     }
 
     function _createGTRuleWithDynamicEventParamsAddress(uint256 _amount) public returns (Rule memory) {
+        return _createGTRuleWithDynamicEventParamsAddress(_amount, true);
+    }
+
+    function _createGTRuleWithDynamicEventParamsAddress(uint256 _amount, bool isPositiveEffect) public returns (Rule memory) {
         // Rule: amount > 4 -> revert -> transfer(address _to, uint256 amount) returns (bool)"
         Rule memory rule;
         // Set up custom event param effect.
-        effectId_event = _createEffectEventDynamicParamsAddress();
+        effectId_event = isPositiveEffect ? _createEffectEventDynamicParamsAddress() : _createEffectEventDynamicParamsAddress2();
         // Instruction set: LogicalOp.PLH, 0, LogicalOp.NUM, _amount, LogicalOp.GT, 0, 1
-        rule.instructionSet = rule.instructionSet = _createInstructionSet(_amount);
+        rule.instructionSet = _createInstructionSet(_amount);
         rule.placeHolders = new Placeholder[](1);
         rule.placeHolders[0].pType = ParamTypes.UINT;
         rule.placeHolders[0].typeSpecificIndex = 1;
@@ -2177,11 +2351,19 @@ contract RulesEngineCommon is DiamondMine, Test {
     }
 
     function _createEffectEventDynamicParams() public pure returns (Effect memory) {
+        return _createEffectEventDynamicParams(EVENTTEXT);
+    }
+
+    function _createEffectEventDynamicParams2() public pure returns (Effect memory) {
+        return _createEffectEventDynamicParams(EVENTTEXT2);
+    }
+
+    function _createEffectEventDynamicParams(bytes32 text) public pure returns (Effect memory) {
         Effect memory effect;
         effect.valid = true;
         effect.dynamicParam = true;
         effect.effectType = EffectTypes.EVENT;
-        effect.text = EVENTTEXT;
+        effect.text = text;
         effect.instructionSet = new uint256[](4);
         // Foreign Call Placeholder
         effect.instructionSet[0] = uint(LogicalOp.NUM);
@@ -2194,11 +2376,19 @@ contract RulesEngineCommon is DiamondMine, Test {
     }
 
     function _createEffectEventDynamicParamsAddress() public pure returns (Effect memory) {
+        return _createEffectEventDynamicParamsAddress(EVENTTEXT);
+    }
+
+    function _createEffectEventDynamicParamsAddress2() public pure returns (Effect memory) {
+        return _createEffectEventDynamicParamsAddress(EVENTTEXT2);
+    }
+
+    function _createEffectEventDynamicParamsAddress(bytes32 text) public pure returns (Effect memory) {
         Effect memory effect;
         effect.valid = true;
         effect.dynamicParam = true;
         effect.effectType = EffectTypes.EVENT;
-        effect.text = EVENTTEXT;
+        effect.text = text;
         effect.instructionSet = new uint256[](4);
         // Foreign Call Placeholder
         effect.instructionSet[0] = uint(LogicalOp.NUM);

@@ -1106,4 +1106,41 @@ abstract contract foreignCalls is RulesEngineCommon, foreignCallsEdgeCases {
         25837056493731107400212975313110805414715314646597854337469320516987899609613
         */
     }
+
+    function testRulesEngine_Unit_ForeignCall_MintPosEffect() public ifDeploymentTestsEnabled endWithStopPrank {
+        vm.skip(true);
+        uint ruleAmount = 1e18;
+        // we setup the rule: if amount > ruleAmount -> mint NFT else get banned
+        _setupRuleWithMintEffect(ruleAmount, address(userContract));
+        // we check the nft balance of user1 before we make the transfer that triggers a mint
+        uint balanceBefore = nftContract.balanceOf(user1);
+        bool statusBefore = testContract2.getNaughty(user1);
+        assertFalse(statusBefore);
+        vm.startPrank(user1);
+        vm.startSnapshotGas("checkRule_Effect_Positive_ForeignCallMint");
+        // the transfer should trigger the mint effect since we are transferring above the rule's amount
+        userContract.transfer(address(0x7654321), ruleAmount + 1);
+        vm.stopSnapshotGas();
+        // we check that the nft balance increased by 1, and that the user didn't get banned
+        assertEq(balanceBefore + 1, nftContract.balanceOf(user1), "NFT balance should increase by 1");
+        assertFalse(testContract2.getNaughty(user1), "user should not be banned");
+    }
+
+    function testRulesEngine_Unit_ForeignCall_BanNegEffect() public {
+        vm.skip(true);
+        uint ruleAmount = 1e18;
+        // we setup the rule: if amount > ruleAmount -> mint NFT else get banned
+        _setupRuleWithMintEffect(ruleAmount, address(userContract));
+        // we check the nft balance of user1 before we make the transfer that triggers a mint
+        uint balanceBefore = nftContract.balanceOf(user1);
+        bool statusBefore = testContract2.getNaughty(user1);
+        assertFalse(statusBefore);
+        vm.startPrank(user1);
+        vm.startSnapshotGas("checkRule_Effect_Negative_ForeignCallBan");
+        // the transfer should trigger the mint effect since we are transferring above the rule's amount
+        userContract.transfer(address(0x7654321), ruleAmount - 1);
+        // we check that the nft balance didn't increased, and that user got banned
+        assertTrue(testContract2.getNaughty(user1), "user should be banned");
+        assertEq(balanceBefore, nftContract.balanceOf(user1), "NFT balance should stay the same");
+    }
 }
