@@ -64,7 +64,7 @@ contract RulesEngineForeignCallFacet is FacetCommonImports {
         _isForeignCallPermissioned(foreignCall.foreignCallAddress, foreignCall.signature);
         fc = foreignCall;
         fc.foreignCallIndex = foreignCallId;
-        _storeForeignCallData(policyId, foreignCall, foreignCallId);
+        _storeForeignCall(policyId, foreignCall, foreignCallId);
         emit ForeignCallUpdated(policyId, foreignCallId);
     }
 
