@@ -1029,6 +1029,7 @@ contract RulesEngineCommon is DiamondMine, Test {
     }
 
     function _setupRuleWithRevert(address userContractMinTransferAddress) public ifDeploymentTestsEnabled resetsGlobalVariables {
+        vm.startPrank(policyAdmin);
         uint256[] memory policyIds = new uint256[](1);
 
         policyIds[0] = _createBlankPolicyOpen();
@@ -2936,6 +2937,7 @@ contract RulesEngineCommon is DiamondMine, Test {
         uint256 _transferValue,
         address _userContractAddr
     ) public ifDeploymentTestsEnabled endWithStopPrank returns (uint256 _policyId) {
+        vm.startPrank(policyAdmin);
         uint256[] memory policyIds = new uint256[](1);
         policyIds[0] = _createBlankPolicyOpen();
         ParamTypes[] memory pTypes = new ParamTypes[](2);
@@ -2981,6 +2983,7 @@ contract RulesEngineCommon is DiamondMine, Test {
         uint256 _transferValue,
         address _callingContractAddr
     ) public ifDeploymentTestsEnabled endWithStopPrank {
+        vm.startPrank(policyAdmin);
         uint256[] memory policyIds = new uint256[](1);
         policyIds[0] = _createBlankPolicyOpen();
         ParamTypes[] memory pTypes = new ParamTypes[](3);
@@ -3027,6 +3030,7 @@ contract RulesEngineCommon is DiamondMine, Test {
         uint256 _transferValue,
         address _userContractAddr
     ) public ifDeploymentTestsEnabled endWithStopPrank {
+        vm.startPrank(policyAdmin);
         uint256[] memory policyIds = new uint256[](1);
         policyIds[0] = _createBlankPolicy();
 
