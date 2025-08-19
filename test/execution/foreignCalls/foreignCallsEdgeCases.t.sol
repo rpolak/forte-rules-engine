@@ -19,6 +19,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      * This should definitely hit gas limits and demonstrate EVM boundaries
      */
     function testRulesEngine_Unit_ForeignCall_ExtremelyLargeUintArray() public ifDeploymentTestsEnabled endWithStopPrank {
+        string memory arrayCallingFunction = "func(uint[])";
         string memory functionSig = "testSigWithArray(uint256[])";
         ForeignCallTestContract foreignCall = new ForeignCallTestContract();
 
@@ -35,20 +36,21 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
         typeSpecificIndices[0].index = 0;
         typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
+        _setUpForeignCallWithAlwaysTrueRuleDynamicArrayArg(fc, arrayCallingFunction, functionSig, 1);
         // Create array with 5,000 elements
         uint256[] memory extremeArray = new uint256[](5000);
         for (uint256 i = 0; i < 5000; i++) {
             extremeArray[i] = i + 1;
         }
 
-        bytes memory vals = abi.encode(extremeArray);
         bytes[] memory retVals = new bytes[](0);
-
-        gasLeftBefore = gasleft();
+        bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(arrayCallingFunction))), extremeArray);
 
         // check gas before and after this call, determine what the gas used in this tx is,
         // compare to a block limit to see if this is above gas limit per block on mainnet
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
+        vm.startPrank(address(userContract));
+        gasLeftBefore = gasleft();
+        RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
         gasLeftAfter = gasleft();
         gasDelta = gasLeftBefore - gasLeftAfter;
 
@@ -63,6 +65,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      * Test large string array
      */
     function testRulesEngine_Unit_ForeignCall_LargeStringArray_1000_Elements() public ifDeploymentTestsEnabled endWithStopPrank {
+        string memory arrayCallingFunction = "func(string[])";
         string memory functionSig = "testSigWithArray(string[])";
         ForeignCallTestContract foreignCall = new ForeignCallTestContract();
 
@@ -85,12 +88,16 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
             largeStringArray[i] = string(abi.encodePacked("Element_", vm.toString(i)));
         }
 
-        bytes memory vals = abi.encode(largeStringArray);
+        _setUpForeignCallWithAlwaysTrueRuleDynamicArrayArg(fc, arrayCallingFunction, functionSig, 1);
         bytes[] memory retVals = new bytes[](0);
+        bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(arrayCallingFunction))), largeStringArray);
 
+        // check gas before and after this call, determine what the gas used in this tx is,
+        // compare to a block limit to see if this is above gas limit per block on mainnet
+        vm.startPrank(address(userContract));
         gasLeftBefore = gasleft();
+        RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
 
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
         gasLeftAfter = gasleft();
         gasDelta = gasLeftBefore - gasLeftAfter;
 
@@ -105,6 +112,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      * Test multiple arrays
      */
     function testRulesEngine_Unit_ForeignCall_MultipleArrayParameters() public ifDeploymentTestsEnabled endWithStopPrank {
+        string memory arrayCallingFunction = "func(uint256[],uint256[])";
         string memory functionSig = "testSigWithArray(uint256[],uint256[])";
         ForeignCallTestContract foreignCall = new ForeignCallTestContract();
 
@@ -135,12 +143,16 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
             array2[i] = i + 5000;
         }
 
-        bytes memory vals = abi.encode(array1, array2);
+        _setUpForeignCallWithAlwaysTrueRuleDynamicArrayArg(fc, arrayCallingFunction, functionSig, 2);
         bytes[] memory retVals = new bytes[](0);
+        bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(arrayCallingFunction))), array1, array2);
 
+        // check gas before and after this call, determine what the gas used in this tx is,
+        // compare to a block limit to see if this is above gas limit per block on mainnet
+        vm.startPrank(address(userContract));
         gasLeftBefore = gasleft();
+        RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
 
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
         gasLeftAfter = gasleft();
         gasDelta = gasLeftBefore - gasLeftAfter;
 
@@ -155,6 +167,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      * Test empty array edge case
      */
     function testRulesEngine_Unit_ForeignCall_EmptyArray() public ifDeploymentTestsEnabled endWithStopPrank {
+        string memory arrayCallingFunction = "func(uint256[])";
         string memory functionSig = "testSigWithEmptyArray(uint256[])";
         ForeignCallTestContract foreignCall = new ForeignCallTestContract();
 
@@ -173,10 +186,16 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
 
         // Create empty array
         uint256[] memory emptyArray = new uint256[](0);
-        bytes memory vals = abi.encode(emptyArray);
-        bytes[] memory retVals = new bytes[](0);
 
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
+        _setUpForeignCallWithAlwaysTrueRuleDynamicArrayArg(fc, arrayCallingFunction, functionSig, 1);
+        bytes[] memory retVals = new bytes[](0);
+        bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(arrayCallingFunction))), emptyArray);
+
+        // check gas before and after this call, determine what the gas used in this tx is,
+        // compare to a block limit to see if this is above gas limit per block on mainnet
+        vm.startPrank(address(userContract));
+        gasLeftBefore = gasleft();
+        RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
 
         uint256[] memory storedArray = foreignCall.getInternalArrayUint();
         assertEq(storedArray.length, 0);
@@ -186,6 +205,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      * Test maximum uint256 values in array to test value bounds
      */
     function testRulesEngine_Unit_ForeignCall_MaxUintValues() public ifDeploymentTestsEnabled endWithStopPrank {
+        string memory arrayCallingFunction = "func(uint256[])";
         string memory functionSig = "testSigWithArray(uint256[])";
         ForeignCallTestContract foreignCall = new ForeignCallTestContract();
 
@@ -208,12 +228,15 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
             maxValueArray[i] = type(uint256).max;
         }
 
-        bytes memory vals = abi.encode(maxValueArray);
+        _setUpForeignCallWithAlwaysTrueRuleDynamicArrayArg(fc, arrayCallingFunction, functionSig, 1);
         bytes[] memory retVals = new bytes[](0);
+        bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(arrayCallingFunction))), maxValueArray);
 
+        // check gas before and after this call, determine what the gas used in this tx is,
+        // compare to a block limit to see if this is above gas limit per block on mainnet
+        vm.startPrank(address(userContract));
         gasLeftBefore = gasleft();
-
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
+        RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
         gasLeftAfter = gasleft();
         gasDelta = gasLeftBefore - gasLeftAfter;
 
@@ -229,6 +252,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      * This reverts the entire transaction when triggered through a calling function showing proper error handling for non-existent functions
      */
     function testRulesEngine_Unit_ForeignCall_NonExistentFunction() public ifDeploymentTestsEnabled endWithStopPrank {
+        string memory arrayCallingFunction = "func(uint256)";
         string memory nonExistentFunctionSig = "dummyFunction(uint256)";
         ForeignCallTestContract foreignCall = new ForeignCallTestContract();
 
@@ -249,11 +273,14 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
             typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
             uint256 testValue = 1337;
-            bytes memory vals = abi.encode(testValue);
+            _setUpForeignCallWithAlwaysTrueRuleValueTypeArg(fc, arrayCallingFunction, nonExistentFunctionSig, ParamTypes.UINT);
             bytes[] memory retVals = new bytes[](0);
+            bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(arrayCallingFunction))), testValue);
 
             // This does NOT revert - it will execute but the foreign call will fail gracefully
-            RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
+            vm.startPrank(address(userContract));
+            gasLeftBefore = gasleft();
+            RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
         }
 
         // Calling function invocation evaluation test - reverts with EvmError: Revert
@@ -340,160 +367,41 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
     /**
      * Test foreign call that deploys a contract which self-destructs in its constructor
      */
-    function testRulesEngine_Unit_ForeignCall_SelfDestructedContract() public ifDeploymentTestsEnabled endWithStopPrank {
+    function testRulesEngine_Fuzz_ForeignCall_SelfDestructedContract(
+        uint8 _transferAmount
+    ) public ifDeploymentTestsEnabled endWithStopPrank {
+        uint transferAmount = uint(_transferAmount);
+        string memory callingFunc = "func(uint256)";
         SelfDestructFactory factory = new SelfDestructFactory();
         address deployedAddress;
+        string memory functionSig = "deployAndDestruct(uint256)";
 
-        //Direct evaluation test
-        {
-            string memory functionSig = "deployAndDestruct(uint256)";
+        vm.startPrank(policyAdmin);
 
-            ForeignCall memory fc;
-            fc.foreignCallAddress = address(factory);
-            fc.signature = bytes4(keccak256(bytes(functionSig)));
-            fc.parameterTypes = new ParamTypes[](1);
-            fc.parameterTypes[0] = ParamTypes.UINT;
-            fc.returnType = ParamTypes.ADDR;
-            fc.encodedIndices = new ForeignCallEncodedIndex[](1);
-            fc.encodedIndices[0].index = 0;
-            fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-            typeSpecificIndices[0].index = 0;
-            typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            uint256 testValue = 123;
-            bytes memory vals = abi.encode(testValue);
-            bytes[] memory retVals = new bytes[](0);
-
-            console2.log("Testing deployment of self-destructing contract with value:", testValue);
-
-            // Direct evaluation test
-            ForeignCallReturnValue memory result = RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(
-                fc,
-                vals,
-                retVals,
-                typeSpecificIndices,
-                1
-            );
-
-            // Extract the deployed contract address from the result
-            deployedAddress = abi.decode(result.value, (address));
-            console2.log("Deployed contract address:", deployedAddress);
-
-            // Check if the contract has any code (should be 0 since it self-destructed)
-            uint256 codeSize;
-            assembly {
-                codeSize := extcodesize(deployedAddress)
-            }
-
-            // After EIP-6780/Cancun, only contracts that self-destruct in the same transaction
-            // as their creation will have code size 0. Our contract self-destructs in constructor.
-            assertEq(codeSize, 0, "Contract should have no code after self-destruct in constructor");
-
-            // Verify factory recorded the deployment
-            (address lastAddr, uint256 lastResult) = factory.getLastDeployment();
-            assertEq(lastAddr, deployedAddress, "Factory should record deployed address");
-            assertEq(lastResult, testValue * 2 + 100, "Factory should record calculated result");
-        }
+        ForeignCall memory fc;
+        fc.foreignCallAddress = address(factory);
+        fc.signature = bytes4(keccak256(bytes(functionSig)));
+        fc.parameterTypes = new ParamTypes[](1);
+        fc.parameterTypes[0] = ParamTypes.UINT;
+        fc.returnType = ParamTypes.ADDR;
+        fc.encodedIndices = new ForeignCallEncodedIndex[](1);
+        fc.encodedIndices[0].index = 0;
+        fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
         // Calling function evaluation setup
-        uint256 policyId;
-        uint256 foreignCallId;
-        {
-            vm.startPrank(policyAdmin);
-
-            policyId = _createBlankPolicy();
-            _setupEffectProcessor();
-
-            string memory functionSig = "deployAndDestruct(uint256)";
-            ForeignCall memory fc;
-            fc.foreignCallAddress = address(factory);
-            fc.signature = bytes4(keccak256(bytes(functionSig)));
-            fc.parameterTypes = new ParamTypes[](1);
-            fc.parameterTypes[0] = ParamTypes.UINT;
-            fc.returnType = ParamTypes.ADDR;
-            fc.encodedIndices = new ForeignCallEncodedIndex[](1);
-            fc.encodedIndices[0].index = 1;
-            fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            foreignCallId = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyId, fc, functionSig);
-        }
-
-        uint256 ruleId;
-        {
-            Rule memory rule;
-            rule.instructionSet = new uint256[](2);
-            rule.instructionSet[0] = uint(LogicalOp.PLH);
-            rule.instructionSet[1] = 0;
-
-            rule.placeHolders = new Placeholder[](1);
-            rule.placeHolders[0].pType = ParamTypes.ADDR;
-            rule.placeHolders[0].typeSpecificIndex = uint128(foreignCallId);
-            rule.placeHolders[0].flags = FLAG_FOREIGN_CALL;
-
-            rule.negEffects = new Effect[](1);
-            rule.negEffects[0] = effectId_revert;
-            rule.posEffects = new Effect[](1);
-            rule.posEffects[0] = effectId_event;
-
-            ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
-        }
-        {
-            ParamTypes[] memory pTypes = new ParamTypes[](2);
-            pTypes[0] = ParamTypes.ADDR;
-            pTypes[1] = ParamTypes.UINT;
-
-            uint256 callingFunctionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
-                policyId,
-                bytes4(keccak256(bytes(callingFunction))),
-                pTypes,
-                callingFunction,
-                ""
-            );
-
-            bytes4[] memory selectors = new bytes4[](1);
-            selectors[0] = bytes4(keccak256(bytes(callingFunction)));
-            uint256[] memory functionIds = new uint256[](1);
-            functionIds[0] = callingFunctionId;
-            uint256[][] memory ruleIdsArray = new uint256[][](1);
-            ruleIdsArray[0] = new uint256[](1);
-            ruleIdsArray[0][0] = ruleId;
-
-            RulesEnginePolicyFacet(address(red)).updatePolicy(
-                policyId,
-                selectors,
-                functionIds,
-                ruleIdsArray,
-                PolicyType.CLOSED_POLICY,
-                policyName,
-                policyDescription
-            );
-
-            vm.stopPrank();
-            vm.startPrank(callingContractAdmin);
-
-            uint256[] memory policyIds = new uint256[](1);
-            policyIds[0] = policyId;
-            RulesEnginePolicyFacet(address(red)).applyPolicy(userContractAddress, policyIds);
-
-            vm.stopPrank();
-        }
+        _setUpForeignCallWithAlwaysTrueRuleValueTypeArg(fc, callingFunc, functionSig, ParamTypes.UINT);
 
         // Calling function execution test
-        {
-            vm.startPrank(address(userContract));
+        vm.startPrank(address(userContract));
 
-            // This should successfully deploy and self-destruct contract through rule evaluation
-            uint256 transferAmount = 456;
+        // This should successfully deploy and self-destruct contract through rule evaluation
+        bytes memory arguments = abi.encodeWithSelector(bytes4(keccak256(bytes(callingFunc))), transferAmount);
 
-            bool success = userContract.transfer(address(0x1234), transferAmount);
-            assertTrue(success, "Transfer should succeed");
-
-            // Verify another contract was deployed and self-destructed
-            (, uint256 ruleResult) = factory.getLastDeployment();
-            assertEq(ruleResult, transferAmount * 2 + 100, "Rule should use transfer amount");
-        }
+        RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
+        vm.stopPrank();
+        // Verify another contract was deployed and self-destructed
+        (address ruleAddr, uint256 ruleResult) = factory.getLastDeployment();
+        assertEq(ruleResult, transferAmount * 2 + 100, "Rule should use transfer amount");
     }
 
     /**
@@ -503,41 +411,9 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
      */
     function testRulesEngine_Unit_ForeignCall_RecursiveCall() public ifDeploymentTestsEnabled endWithStopPrank {
         RecursiveCallContract recursiveContract = new RecursiveCallContract();
+
         recursiveContract.setRulesEngineAddress(address(red));
-
-        // Direct evaluation test
-        {
-            string memory functionSig = "aggressiveRecursiveCall(uint256)";
-            ForeignCall memory fc;
-            fc.foreignCallAddress = address(recursiveContract);
-            fc.signature = bytes4(keccak256(bytes(functionSig)));
-            fc.parameterTypes = new ParamTypes[](1);
-            fc.parameterTypes[0] = ParamTypes.UINT;
-            fc.returnType = ParamTypes.UINT;
-            fc.encodedIndices = new ForeignCallEncodedIndex[](1);
-            fc.encodedIndices[0].index = 0;
-            fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-            typeSpecificIndices[0].index = 0;
-            typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            uint256 testValue = 1;
-            bytes memory vals = abi.encode(testValue);
-            bytes[] memory retVals = new bytes[](0);
-
-            gasLeftBefore = gasleft();
-            RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
-            gasLeftAfter = gasleft();
-            gasDelta = gasLeftBefore - gasLeftAfter;
-
-            console2.log("Gas used in direct recursive foreign call evaluation:", gasDelta);
-
-            assertTrue(gasDelta > GAS_LIMIT);
-
-            recursiveContract.resetDepth();
-        }
-
+        recursiveContract.setUserContractAddress(address(userContract));
         // Calling function evaluation test
         {
             vm.startPrank(policyAdmin);
@@ -638,21 +514,6 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
         fc.encodedIndices[0].index = 0;
         fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
-        ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-        typeSpecificIndices[0].index = 0;
-        typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-        uint256 testValue = 99;
-        bytes memory vals = abi.encode(testValue);
-        bytes[] memory retVals = new bytes[](0);
-
-        // Direct evaluation test
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
-
-        // Verify the function actually executed
-        assertEq(foreignCall.getDecodedIntOne(), 99);
-
-        // Now test through rule evaluation
         vm.startPrank(policyAdmin);
 
         uint256 policyId = _createBlankPolicy();
@@ -742,16 +603,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
         fc.encodedIndices[0].index = 0;
         fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
-        ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-        typeSpecificIndices[0].index = 0;
-        typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
         string memory testString = "malformed_test";
-        bytes memory vals = abi.encode(testString);
-        bytes[] memory retVals = new bytes[](0);
-
-        // Direct evaluation test - handles type mismatch gracefully with silent revert
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
 
         // Now test through rule evaluation
         vm.startPrank(policyAdmin);
@@ -850,17 +702,8 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
         fc.encodedIndices[0].index = 0;
         fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
-        ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-        typeSpecificIndices[0].index = 0;
-        typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
         // Use a depth that approaches but doesn't exceed EVM limits
         uint256 depth = 500; // Should be safe but deep
-        bytes memory vals = abi.encode(depth);
-        bytes[] memory retVals = new bytes[](0);
-
-        // Direct evaluation test - handles deep call stacks appropriately
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
 
         // Now test through rule evaluation
         vm.startPrank(policyAdmin);
@@ -930,7 +773,7 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
         vm.startPrank(address(userContract));
 
         // handles deep call stacks through rule evaluation
-        userContract.transfer(address(0x1234), 500);
+        userContract.transfer(address(0x1234), depth);
     }
 
     /**
@@ -951,17 +794,8 @@ abstract contract foreignCallsEdgeCases is rulesEngineInternalFunctions {
         fc.encodedIndices[0].index = 0;
         fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
 
-        ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-        typeSpecificIndices[0].index = 0;
-        typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
         // Pass string data
         string memory wrongTypeData = "this_should_be_uint256";
-        bytes memory vals = abi.encode(wrongTypeData);
-        bytes[] memory retVals = new bytes[](0);
-
-        // Direct evaluation test - handles parameter type mismatches gracefully with silent revert
-        RulesEngineProcessorFacet(address(red)).evaluateForeignCallForRule(fc, vals, retVals, typeSpecificIndices, 1);
 
         // test through rule evaluation
         vm.startPrank(policyAdmin);
@@ -1106,9 +940,17 @@ contract SelfDestructFactory {
 contract RecursiveCallContract {
     address public rulesEngineAddress;
     uint256 public recursionDepth;
+    address public userContractAddress;
+    bytes32 public _hash;
+    uint256 variable;
+    uint public gasLeft;
 
     function setRulesEngineAddress(address _rulesEngine) external {
         rulesEngineAddress = _rulesEngine;
+    }
+
+    function setUserContractAddress(address _userContractAddress) external {
+        userContractAddress = _userContractAddress;
     }
 
     function resetDepth() external {
@@ -1121,37 +963,13 @@ contract RecursiveCallContract {
     function aggressiveRecursiveCall(uint256 value) external returns (uint256) {
         recursionDepth++;
 
-        // Burn gas with expensive operations
-        uint256 gasWaster = 0;
-        for (uint256 i = 0; i < 2000; i++) {
-            gasWaster = uint256(keccak256(abi.encode(gasWaster, i, value, recursionDepth)));
+        assembly {
+            sstore(variable.slot, mload(0x7fffff)) // very expensive memory read
         }
 
-        // Continue recursion if we have gas and haven't hit depth limit
-        if (gasleft() > 100000 && recursionDepth < 1000 && rulesEngineAddress != address(0)) {
-            // Create foreign call that calls ourselves again
-            ForeignCall memory recursiveFc;
-            recursiveFc.foreignCallAddress = address(this);
-            recursiveFc.signature = this.aggressiveRecursiveCall.selector;
-            recursiveFc.parameterTypes = new ParamTypes[](1);
-            recursiveFc.parameterTypes[0] = ParamTypes.UINT;
-            recursiveFc.returnType = ParamTypes.UINT;
-            recursiveFc.encodedIndices = new ForeignCallEncodedIndex[](1);
-            recursiveFc.encodedIndices[0].index = 0;
-            recursiveFc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
-            typeSpecificIndices[0].index = 0;
-            typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
-
-            bytes memory vals = abi.encode(value + 1);
-            bytes[] memory retVals = new bytes[](0);
-
-            // Recursive call through rules engine
-            RulesEngineProcessorFacet(rulesEngineAddress).evaluateForeignCallForRule(recursiveFc, vals, retVals, typeSpecificIndices, 1);
-        }
-
-        return value + (gasWaster % 1000) + recursionDepth;
+        userContractAddress.call(abi.encodeWithSignature("transfer(address,uint256)", address(0x1234), value));
+        gasLeft = gasleft();
+        return gasleft();
     }
 }
 

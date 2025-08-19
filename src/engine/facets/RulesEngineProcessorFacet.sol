@@ -57,7 +57,7 @@ contract RulesEngineProcessorFacet is FacetCommonImports {
         uint256 foreignCallIndex,
         bytes[] memory retVals,
         ForeignCallEncodedIndex[] memory metadata
-    ) public returns (ForeignCallReturnValue memory retVal) {
+    ) internal returns (ForeignCallReturnValue memory retVal) {
         // Load the Foreign Call data from storage
         ForeignCall memory foreignCall = lib._getForeignCallStorage().foreignCalls[policyId][foreignCallIndex];
         if (foreignCall.set) {
@@ -77,7 +77,7 @@ contract RulesEngineProcessorFacet is FacetCommonImports {
         bytes[] memory retVals,
         ForeignCallEncodedIndex[] memory metadata,
         uint256 policyId
-    ) public returns (ForeignCallReturnValue memory retVal) {
+    ) internal returns (ForeignCallReturnValue memory retVal) {
         // First, calculate total size needed and positions of dynamic data
         bytes memory encodedCall = bytes.concat(bytes4(fc.signature));
         bytes memory dynamicData = "";
@@ -105,6 +105,7 @@ contract RulesEngineProcessorFacet is FacetCommonImports {
                     mappedTrackerKeyEI,
                     parameterTypesLength
                 );
+                /// @notice the following comparison is a difference check and not an equality check
             } else if (encodedIndex.eType != EncodedIndexType.ENCODED_VALUES) {
                 (encodedCall, lengthToAppend, dynamicData) = evaluateForeignCallForRulePlaceholderValues(
                     fc,
@@ -329,7 +330,7 @@ contract RulesEngineProcessorFacet is FacetCommonImports {
         bytes memory value,
         ParamTypes argType,
         uint256 parameterTypesLength
-    ) public pure returns (bytes memory, uint256, bytes memory) {
+    ) internal pure returns (bytes memory, uint256, bytes memory) {
         if (argType == ParamTypes.STR || argType == ParamTypes.BYTES) {
             encodedCall = bytes.concat(encodedCall, bytes32(32 * (parameterTypesLength) + lengthToAppend));
             bytes memory stringData = ProcessorLib._extractStringData(value);

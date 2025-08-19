@@ -799,6 +799,214 @@ contract RulesEngineCommon is DiamondMine, Test {
         return policyIds[0];
     }
 
+    function _setUpForeignCallWithAlwaysTrueRuleValueTypeArg(
+        ForeignCall memory fc,
+        string memory callingSignature,
+        string memory fcSignature,
+        ParamTypes _pType
+    ) public returns (Rule memory rule) {
+        uint256[] memory policyIds = new uint256[](1);
+        policyIds[0] = _createBlankPolicy();
+        vm.startPrank(policyAdmin);
+        ParamTypes[] memory pTypes = new ParamTypes[](1);
+        pTypes[0] = _pType;
+
+        // Save the calling function
+        uint256 callingFunctionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
+            policyIds[0],
+            bytes4(bytes4(keccak256(bytes(callingSignature)))),
+            pTypes,
+            callingSignature,
+            ""
+        );
+        // Save the Policy
+        callingFunctions.push(bytes4(keccak256(bytes(callingSignature))));
+        callingFunctionIds.push(callingFunctionId);
+
+        uint foreignCallId = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyIds[0], fc, fcSignature);
+
+        rule.instructionSet = _createInstructionSet();
+        // placeholder for foreign call we just created
+        rule.effectPlaceHolders = new Placeholder[](1);
+        rule.effectPlaceHolders[0].flags = FLAG_FOREIGN_CALL;
+        rule.effectPlaceHolders[0].typeSpecificIndex = uint128(foreignCallId);
+
+        // positive effect
+        uint256[] memory effectBytecode = new uint256[](0);
+        Effect memory positiveEffect = Effect({
+            valid: true,
+            dynamicParam: false,
+            effectType: EffectTypes.EXPRESSION,
+            pType: ParamTypes.ADDR,
+            param: "",
+            text: EVENTTEXT,
+            errorMessage: "foreign call failed",
+            instructionSet: effectBytecode
+        });
+        rule.posEffects = new Effect[](1);
+        rule.posEffects[0] = positiveEffect;
+
+        // negative effect
+        rule.negEffects = new Effect[](1);
+        rule.negEffects[0] = effectId_revert;
+
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policyIds[0], rule, ruleName, ruleDescription);
+
+        ruleIds.push(new uint256[](1));
+        ruleIds[0][0] = ruleId;
+        // _addRuleIdsToPolicy(policyIds[0], ruleIds);
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyIds[0],
+            callingFunctions,
+            callingFunctionIds,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            "policyName",
+            "policyDescription"
+        );
+        vm.stopPrank();
+        vm.startPrank(callingContractAdmin);
+        RulesEnginePolicyFacet(address(red)).applyPolicy(address(userContract), policyIds);
+    }
+
+    function _setUpForeignCallAndCompareAgainstExpected(
+        ForeignCall memory fc,
+        string memory callingSignature,
+        string memory fcSignature,
+        ParamTypes _pType,
+        uint256 expectedValue
+    ) public {
+        Rule memory rule;
+        uint256[] memory policyIds = new uint256[](1);
+        policyIds[0] = _createBlankPolicy();
+        vm.startPrank(policyAdmin);
+        ParamTypes[] memory pTypes = new ParamTypes[](1);
+        pTypes[0] = _pType;
+
+        // Save the calling function
+        uint256 callingFunctionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
+            policyIds[0],
+            bytes4(bytes4(keccak256(bytes(callingSignature)))),
+            pTypes,
+            callingSignature,
+            ""
+        );
+        // Save the Policy
+        callingFunctions.push(bytes4(keccak256(bytes(callingSignature))));
+        callingFunctionIds.push(callingFunctionId);
+
+        uint foreignCallId = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyIds[0], fc, fcSignature);
+
+        rule.placeHolders = new Placeholder[](1);
+        rule.placeHolders[0].flags = FLAG_FOREIGN_CALL;
+        rule.placeHolders[0].typeSpecificIndex = uint128(foreignCallId);
+
+        // instruction set: is "expectedValue" == returned value from foreign call at index 0 ?
+        rule.instructionSet = new uint[](7);
+        rule.instructionSet[0] = uint(LogicalOp.PLH);
+        rule.instructionSet[1] = 0; // placeholder at index 0
+        rule.instructionSet[2] = uint(LogicalOp.NUM);
+        rule.instructionSet[3] = expectedValue; // we place in memory our expected value
+        rule.instructionSet[4] = uint(LogicalOp.EQ); // we run equality check against these 2 values
+        rule.instructionSet[5] = 0;
+        rule.instructionSet[6] = 1;
+        rule.posEffects = new Effect[](0);
+
+        // negative effect
+        rule.negEffects = new Effect[](1);
+        rule.negEffects[0] = effectId_revert;
+
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policyIds[0], rule, ruleName, ruleDescription);
+
+        ruleIds.push(new uint256[](1));
+        ruleIds[0][0] = ruleId;
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyIds[0],
+            callingFunctions,
+            callingFunctionIds,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            "policyName",
+            "policyDescription"
+        );
+        vm.stopPrank();
+        vm.startPrank(callingContractAdmin);
+        RulesEnginePolicyFacet(address(red)).applyPolicy(address(userContract), policyIds);
+    }
+
+    function _setUpForeignCallWithAlwaysTrueRuleDynamicArrayArg(
+        ForeignCall memory fc,
+        string memory callingSignature,
+        string memory fcSignature,
+        uint arrayAmount
+    ) public {
+        uint256[] memory policyIds = new uint256[](1);
+        policyIds[0] = _createBlankPolicy();
+        vm.startPrank(policyAdmin);
+        // we fuzz the amount of arrays
+        ParamTypes[] memory pTypes = new ParamTypes[](arrayAmount);
+        // we assign the same type to all the arrays
+        for (uint array; array < arrayAmount; array++) pTypes[array] = ParamTypes.DYNAMIC_TYPE_ARRAY;
+
+        // Save the calling function
+        uint256 callingFunctionId = RulesEngineComponentFacet(address(red)).createCallingFunction(
+            policyIds[0],
+            bytes4(bytes4(keccak256(bytes(callingSignature)))),
+            pTypes,
+            callingSignature,
+            ""
+        );
+        // Save the Policy
+        callingFunctions.push(bytes4(keccak256(bytes(callingSignature))));
+        callingFunctionIds.push(callingFunctionId);
+
+        uint foreignCallId = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyIds[0], fc, fcSignature);
+
+        Rule memory rule;
+        rule.instructionSet = _createInstructionSet();
+        // placeholder for the foreign call
+        rule.effectPlaceHolders = new Placeholder[](1);
+        rule.effectPlaceHolders[0].flags = FLAG_FOREIGN_CALL;
+        rule.effectPlaceHolders[0].typeSpecificIndex = uint128(foreignCallId);
+
+        // positive effect
+        uint256[] memory effectBytecode = new uint256[](0);
+        Effect memory positiveEffect = Effect({
+            valid: true,
+            dynamicParam: false,
+            effectType: EffectTypes.EXPRESSION,
+            pType: ParamTypes.ADDR,
+            param: "",
+            text: EVENTTEXT,
+            errorMessage: "foreign call failed",
+            instructionSet: effectBytecode
+        });
+        rule.posEffects = new Effect[](1);
+        rule.posEffects[0] = positiveEffect;
+
+        // negative effect
+        rule.negEffects = new Effect[](1);
+        rule.negEffects[0] = effectId_revert;
+
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policyIds[0], rule, ruleName, ruleDescription);
+
+        ruleIds.push(new uint256[](1));
+        ruleIds[0][0] = ruleId;
+        // _addRuleIdsToPolicy(policyIds[0], ruleIds);
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyIds[0],
+            callingFunctions,
+            callingFunctionIds,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            "policyName",
+            "policyDescription"
+        );
+        vm.stopPrank();
+        vm.startPrank(callingContractAdmin);
+        RulesEnginePolicyFacet(address(red)).applyPolicy(address(userContract), policyIds);
+    }
+
     function _setUpEffect(Rule memory rule, EffectTypes _effectType, bool isPositive) public view returns (Rule memory _rule) {
         if (isPositive) {
             rule.posEffects = new Effect[](1);
@@ -2655,14 +2863,10 @@ contract RulesEngineCommon is DiamondMine, Test {
 
     // internal instruction set builder: overload as needed
     function _createInstructionSet() public pure returns (uint256[] memory instructionSet) {
-        instructionSet = new uint256[](7);
+        instructionSet = new uint256[](2);
+        // instruction set: TRUE
         instructionSet[0] = uint(LogicalOp.NUM);
-        instructionSet[1] = 0;
-        instructionSet[2] = uint(LogicalOp.NUM);
-        instructionSet[3] = 1;
-        instructionSet[4] = uint(LogicalOp.GT);
-        instructionSet[5] = 0;
-        instructionSet[6] = 1;
+        instructionSet[1] = 1; // always return true
     }
 
     function _createInstructionSet(uint256 plh1) public pure returns (uint256[] memory instructionSet) {
