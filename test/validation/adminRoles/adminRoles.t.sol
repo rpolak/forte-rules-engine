@@ -89,7 +89,7 @@ abstract contract adminRoles is RulesEngineCommon, RulesEngineAdminRolesFacet {
         uint256 policyId = _createBlankPolicyWithAdminRoleString();
         bytes32 adminRole = bytes32(abi.encodePacked(keccak256(bytes(string.concat(string(abi.encode(1)), "TestString")))));
         vm.expectRevert("Below Min Admin Threshold");
-        RulesEngineAdminRolesFacet(address(red)).renounceRole(adminRole, policyAdmin, policyId);
+        RulesEngineAdminRolesFacet(address(red)).renouncePolicyAdminRole(adminRole, policyAdmin, policyId);
         bool hasAdminRole = RulesEngineAdminRolesFacet(address(red)).isPolicyAdmin(1, policyAdmin);
         assertTrue(hasAdminRole);
     }
@@ -104,6 +104,42 @@ abstract contract adminRoles is RulesEngineCommon, RulesEngineAdminRolesFacet {
         emit CallingContractAdminRoleGranted(newUserContractAddress, callingContractAdmin);
         newUserContract.setCallingContractAdmin(callingContractAdmin);
         assertTrue(RulesEngineAdminRolesFacet(address(red)).isCallingContractAdmin(newUserContractAddress, callingContractAdmin));
+    }
+
+    function testRulesEngine_Unit_Renounce_CallingContractAdmin_Positive() public ifDeploymentTestsEnabled endWithStopPrank {
+        newUserContract.setCallingContractAdmin(callingContractAdmin);
+        assertTrue(RulesEngineAdminRolesFacet(address(red)).isCallingContractAdmin(newUserContractAddress, callingContractAdmin));
+        vm.startPrank(callingContractAdmin);
+        RulesEngineAdminRolesFacet(address(red)).renounceCallingContractAdminRole(newUserContractAddress, callingContractAdmin);
+        assertFalse(RulesEngineAdminRolesFacet(address(red)).isCallingContractAdmin(newUserContractAddress, callingContractAdmin));
+    }
+
+    function testRulesEngine_Unit_RenounceForeignCallAdmin_Positive()
+        public
+        ifDeploymentTestsEnabled
+        endWithStopPrank
+    {        
+        // start test as address 0x55556666
+        vm.startPrank(address(0x55556666));
+        // set the selector from the permissioned foreign call contract
+        bytes4 foreignCallSelector = PermissionedForeignCallTestContract.simpleCheck.selector;
+        permissionedForeignCallContract.setForeignCallAdmin(address(0x55556666), foreignCallSelector);
+        assertTrue(
+            RulesEngineAdminRolesFacet(address(red)).isForeignCallAdmin(
+                address(permissionedForeignCallContract),
+                address(0x55556666),
+                foreignCallSelector
+            )
+        );
+        RulesEngineAdminRolesFacet(address(red)).renounceForeignCallAdminRole(address(permissionedForeignCallContract), foreignCallSelector, address(0x55556666));
+        // confirm the foreign call admin has renounced
+        assertFalse(
+            RulesEngineAdminRolesFacet(address(red)).isForeignCallAdmin(
+                address(permissionedForeignCallContract),
+                address(0x55556666),
+                foreignCallSelector
+            )
+        );
     }
 
     function testRulesEngine_Unit_CreateCallingContractAdmin_ThroughCallingContract_Negative()
