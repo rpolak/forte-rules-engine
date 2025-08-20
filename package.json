@@ -1,6 +1,6 @@
 {
   "name": "@fortefoundation/forte-rules-engine",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Forte Rules Engine",
   "files": [
     "LICENSE",
