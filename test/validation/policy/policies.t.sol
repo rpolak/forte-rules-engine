@@ -62,6 +62,39 @@ abstract contract policies is RulesEngineCommon {
         );
     }
 
+    function testRulesEngine_Unit_UpdatePolicy_InvalidSignatureSelector() public ifDeploymentTestsEnabled endWithStopPrank {
+        // we first add a good policy info
+        (uint256 policyId, uint256 ruleId) = setUpRuleSimple();
+        ruleId;
+        vm.stopPrank();
+        vm.startPrank(policyAdmin);
+        assertGt(
+            RulesEnginePolicyFacet(address(red)).updatePolicy(
+                policyId,
+                callingFunctions,
+                callingFunctionIds,
+                ruleIds,
+                PolicyType.CLOSED_POLICY,
+                policyName,
+                policyDescription
+            ),
+            0
+        );
+        // now we try to update it with a corrupted selector
+        callingFunctions[0] = bytes4(keccak256(bytes("maliciousCallingFunction(badType,evenWorseType)")));
+        // we shouldn't be able to
+        vm.expectRevert("Invalid Signature");
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyId,
+            callingFunctions,
+            callingFunctionIds,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            policyName,
+            policyDescription
+        );
+    }
+
     // Test attempt to add a policy with valid parts.
     function testRulesEngine_Unit_UpdatePolicy_Positive() public ifDeploymentTestsEnabled endWithStopPrank {
         (uint256 policyId, uint256 ruleId) = setUpRuleSimple();
