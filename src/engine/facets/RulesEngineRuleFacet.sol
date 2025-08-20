@@ -345,10 +345,6 @@ contract RulesEngineRuleFacet is FacetCommonImports {
         // instructionSet
         if (rule.instructionSet.length == 0) revert(EMPTY_INSTRUCTION_SET); // only applies to top level instruction set
         _validateInstructionSet(rule.instructionSet);
-        // rawData
-        for (uint i = 0; i < rule.rawData.instructionSetIndex.length; i++) {
-            _validateInstructionSetIndex(rule.rawData.instructionSetIndex[i]);
-        }
         for (uint i = 0; i < rule.rawData.argumentTypes.length; i++) {
             _validateParamType(rule.rawData.argumentTypes[i]);
         }
@@ -380,7 +376,6 @@ contract RulesEngineRuleFacet is FacetCommonImports {
     function _validatePlaceholders(Placeholder[] calldata placeholders) internal pure {
         for (uint256 i = 0; i < placeholders.length; i++) {
             _validateParamType(placeholders[i].pType);
-            _validateInstructionSetIndex(placeholders[i].typeSpecificIndex);
         }
     }
 
@@ -391,7 +386,7 @@ contract RulesEngineRuleFacet is FacetCommonImports {
     function _validateInstructionSet(uint256[] calldata instructionSet) internal pure {
         uint expectedDataElements; // the number of expected data elements in the instruction set (memory pointers)
         bool isData; // the first item of an instruction set must be an opcode, so isData must be "initialized" to false
-
+        uint totalInstructions; // the total number of instructions in the instruction set (opcodes)
         // we loop through the instructionSet to validate it
         for (uint256 i = 0; i < instructionSet.length; i++) {
             // we extract the specific item from the validation set which is in memory, and we place it in the stack to save some gas
@@ -407,6 +402,7 @@ contract RulesEngineRuleFacet is FacetCommonImports {
                     delete expectedDataElements;
                 }
             } else {
+                ++totalInstructions;
                 // if the instruction is not data, we check that it is a valid opcode
                 if (instruction > opsTotalSize) revert(INVALID_INSTRUCTION);
                 // NUM is a special case since it can expect any data, so no check is needed next
@@ -427,6 +423,8 @@ contract RulesEngineRuleFacet is FacetCommonImports {
         }
         // if we have any expected data elements left, it means the instruction set is invalid
         if (expectedDataElements > 0 || isData) revert(INVALID_INSTRUCTION_SET);
+        // if the instruction set will overflow the memory size, we revert
+        if (totalInstructions > memorySize) revert(INSTRUCTION_SET_TOO_LARGE);
     }
 
     /**
@@ -445,14 +443,6 @@ contract RulesEngineRuleFacet is FacetCommonImports {
     function _validateEffectType(EffectTypes effectType) internal pure {
         uint EffectTypesSize = 3;
         if (uint(effectType) >= EffectTypesSize) revert(INVALID_EFFECT_TYPE);
-    }
-
-    /**
-     * @notice Validates an instruction set index type.
-     * @param index The index to validate.
-     */
-    function _validateInstructionSetIndex(uint256 index) internal pure {
-        if (index > memorySize) revert(MEMORY_OVERFLOW);
     }
 
     /**
