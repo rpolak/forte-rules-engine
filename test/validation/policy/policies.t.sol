@@ -135,7 +135,7 @@ abstract contract policies is RulesEngineCommon {
         rule.posEffects = new Effect[](1);
         rule.posEffects[0] = effectId_event;
 
-        uint256 ruleId = RulesEngineRuleFacet(address(red)).updateRule(policyIds[0], 0, rule, ruleName, ruleDescription);
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policyIds[0], rule, ruleName, ruleDescription);
 
         ruleIds.push(new uint256[](1));
         ruleIds[0][0] = ruleId;
@@ -163,7 +163,7 @@ abstract contract policies is RulesEngineCommon {
         rule.posEffects = new Effect[](1);
         rule.posEffects[0] = effectId_event;
 
-        uint256 ruleId = RulesEngineRuleFacet(address(red)).updateRule(policyIds[0], 0, rule, ruleName, ruleDescription);
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policyIds[0], rule, ruleName, ruleDescription);
 
         ruleIds.push(new uint256[](1));
         ruleIds[0][0] = ruleId;
@@ -294,9 +294,9 @@ abstract contract policies is RulesEngineCommon {
         ParamTypes[] memory pTypes = new ParamTypes[](2);
         pTypes[0] = ParamTypes.ADDR;
         pTypes[1] = ParamTypes.UINT;
-        uint256 callingFunctionId;        
+        uint256 callingFunctionId;
 
-        uint256[][] memory ruleIds = new uint256[][](50);        
+        uint256[][] memory ruleIds = new uint256[][](50);
         ruleIds[0] = new uint256[](50);
         bytes4[] memory selectors = new bytes4[](50);
         uint256[] memory functionIds = new uint256[](50);
@@ -322,7 +322,7 @@ abstract contract policies is RulesEngineCommon {
         // Remove all but the last calling function and rule.
         selectors = new bytes4[](1);
         functionIds = new uint256[](1);
-        ruleIds = new uint256[][](1); 
+        ruleIds = new uint256[][](1);
         selectors[0] = lastSelector;
         functionIds[0] = lastFunctionId;
         ruleIds[0] = new uint256[](1);
@@ -343,7 +343,7 @@ abstract contract policies is RulesEngineCommon {
         assertEq(ruleIds.length, 1, "Rules delete in updatePolicy did not remove all the calling function associations");
         assertEq(ruleIds[0].length, 1, "Rules delete in updatePolicy did not remove all the rules");
 
-        // verify that the old rules and calling functions cannot be used 
+        // verify that the old rules and calling functions cannot be used
         selectors[0] = lastSelector;
         functionIds[0] = 0;
         ruleIds[0] = new uint256[](1);
@@ -982,7 +982,7 @@ abstract contract policies is RulesEngineCommon {
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
             // Save the rule
-            ruleId = RulesEngineRuleFacet(address(red)).updateRule(policyId, 0, rule, "My rule", "My way or the highway");
+            ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, "My rule", "My way or the highway");
         }
 
         uint functionId;
