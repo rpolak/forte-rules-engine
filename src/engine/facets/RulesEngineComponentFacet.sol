@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "src/engine/facets/FacetCommonImports.sol";
+import {RulesEngineStorageLib as StorageLib} from "src/engine/facets/RulesEngineStorageLib.sol";
 
 /**
  * @title Rules Engine Component Facet
@@ -307,6 +308,7 @@ contract RulesEngineComponentFacet is FacetCommonImports {
     function updateTracker(uint256 policyId, uint256 trackerIndex, Trackers calldata tracker) external {
         _policyAdminOnly(policyId, msg.sender);
         _notCemented(policyId);
+        if (StorageLib._isTrackerSet(policyId, trackerIndex)) revert(TRACKER_NOT_SET);
         // Load the Tracker data from storage
         TrackerStorage storage data = lib._getTrackerStorage();
         _storeTracker(data, policyId, trackerIndex, tracker);
@@ -333,6 +335,7 @@ contract RulesEngineComponentFacet is FacetCommonImports {
         _notCemented(_policyId);
         // Load the Tracker data from storage
         TrackerStorage storage data = lib._getTrackerStorage();
+        if (StorageLib._isTrackerSet(_policyId, _trackerIndex)) revert(TRACKER_NOT_SET);
         _storeTrackerMapping(data, _policyId, _trackerIndex, _tracker, _trackerKey, _trackerValue);
         emit TrackerUpdated(_policyId, _trackerIndex);
     }
@@ -473,7 +476,6 @@ contract RulesEngineComponentFacet is FacetCommonImports {
 
         // After this, you can clear the mapping for this function's ruleIds
         delete data.policy.callingFunctionsToRuleIds[signature];
-
 
         for (uint256 i = 0; i < data.policy.callingFunctions.length; i++) {
             if (data.policy.callingFunctions[i] == signature) {
