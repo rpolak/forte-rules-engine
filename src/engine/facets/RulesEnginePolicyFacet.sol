@@ -346,6 +346,7 @@ contract RulesEnginePolicyFacet is FacetCommonImports {
     ) internal returns (uint256) {
         require(uint8(_policyType) < 3, POLICY_TYPE_INV);
         require(_policyId > 0, POLICY_ID_INV);
+        _validateNoIdenticalFunctionSigs(_callingFunctions);
         // Load the policy data from storage
         Policy storage data = lib._getPolicyStorage().policyStorageSets[_policyId].policy;
 
@@ -355,7 +356,7 @@ contract RulesEnginePolicyFacet is FacetCommonImports {
 
         // clear the calling function to rule id associations.
         bytes4[] memory oldCallingFunctions = data.callingFunctions;
-        for (uint256 i = 0; i < oldCallingFunctions.length; i ++) {
+        for (uint256 i = 0; i < oldCallingFunctions.length; i++) {
             delete data.callingFunctionsToRuleIds[oldCallingFunctions[i]];
         }
 
@@ -471,6 +472,12 @@ contract RulesEnginePolicyFacet is FacetCommonImports {
                 require(StorageLib._isTrackerSet(_policyId, placeholders[k].typeSpecificIndex), TRACKER_NOT_SET);
             }
         }
+    }
+
+    function _validateNoIdenticalFunctionSigs(bytes4[] calldata sigs) internal {
+        for (uint sigIndex; sigIndex < sigs.length - 1; sigIndex++)
+            for (uint otherSigIndex = sigIndex + 1; otherSigIndex < sigs.length; otherSigIndex++)
+                if (sigs[sigIndex] == sigs[otherSigIndex]) revert("Duplicates not allowed");
     }
 
     /**
