@@ -276,8 +276,7 @@ struct Trackers {
  * Structure used to hold the calling function Ids and their associated metadata
  */
 struct CallingFunctionStruct {
-    mapping(uint256 policyId => uint256 functionId) functionIdCounter;
-    mapping(uint256 policyId => mapping(uint256 functionId => CallingFunctionStorageSet)) callingFunctionStorageSets;
+    mapping(uint256 policyId => mapping(bytes4 sig => CallingFunctionStorageSet)) callingFunctionStorageSets;
 }
 
 /**
@@ -286,7 +285,6 @@ struct CallingFunctionStruct {
  */
 struct CallingFunctionStorageSet {
     bool set;
-    bytes4 signature;
     ParamTypes[] parameterTypes;
 }
 
@@ -421,8 +419,6 @@ struct PolicyStorageSet {
  * Policy Storage Structure
  */
 struct Policy {
-    // calling functions to calling function Id
-    mapping(bytes4 => uint256) callingFunctionIdMap;
     // calling function signature to ruleIds
     mapping(bytes4 => uint256[]) callingFunctionsToRuleIds;
     // Array to hold the calling functions signatures for iterating
