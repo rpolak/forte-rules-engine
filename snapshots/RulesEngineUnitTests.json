@@ -1,11 +1,6 @@
 {
   "Additional_Encoding_Address_Value": "26312",
-  "Additional_Encoding_Bool_Value": "26431",
-  "Additional_Encoding_Bytes_Value": "23463",
-  "Additional_Encoding_DynamicArray_Value": "29661",
   "Additional_Encoding_ForeignCall_Value": "31328",
-  "Additional_Encoding_StaticArray_Value": "27587",
-  "Additional_Encoding_String_Value": "27884",
   "Additional_Encoding_Uint_Value": "30359",
   "CheckRules_Event": "32694",
   "CheckRules_Event_CustomParams_Address": "31412",
