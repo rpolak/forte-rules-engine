@@ -5,79 +5,77 @@ import "test/utils/RulesEngineCommon.t.sol";
 import "src/example/ExampleERC20.sol";
 
 abstract contract policiesExecution is RulesEngineCommon {
+    /**
+     *
+     *
+     * Execution tests for policies within the rules engine
+     *
+     *
+     */
 
-/**
- *
- *
- * Execution tests for policies within the rules engine 
- *
- *
- */
+    function testPolicyClosingDoesntDeleteContractAssociations() public ifDeploymentTestsEnabled resetsGlobalVariables {
+        uint256[] memory policyIds = new uint256[](3);
+        uint256 policy1 = _createBlankPolicyOpen();
+        uint256 policy2 = _createBlankPolicyOpen();
+        uint256 policy3 = _createBlankPolicyOpen();
+        policyIds[0] = policy1;
+        policyIds[1] = policy2;
+        policyIds[2] = policy3;
+        address[] memory contracts = new address[](3);
 
- function testPolicyClosingDoesntDeleteContractAssociations() public ifDeploymentTestsEnabled resetsGlobalVariables {
-    uint256[] memory policyIds = new uint256[](3);
-    uint256 policy1 = _createBlankPolicyOpen();
-    uint256 policy2 = _createBlankPolicyOpen();
-    uint256 policy3 = _createBlankPolicyOpen();
-    policyIds[0] = policy1;
-    policyIds[1] = policy2;
-    policyIds[2] = policy3;
-    address[] memory contracts = new address[](3);
-    
-    vm.startPrank(callingContractAdmin);
-    contracts[0] = address(new ExampleERC20("Test", "TEST"));
-    contracts[1] = address(new ExampleERC20("Test2", "TEST2"));
-    contracts[2] = address(new ExampleERC20("Test3", "TEST3"));
-    vm.stopPrank();
-
-    for (uint256 i = 0; i < contracts.length; i++) {
         vm.startPrank(callingContractAdmin);
-        ExampleERC20(contracts[i]).setRulesEngineAddress(address(red));
-        ExampleERC20(contracts[i]).setCallingContractAdmin(callingContractAdmin);
-        RulesEnginePolicyFacet(address(red)).applyPolicy(contracts[i], policyIds);
+        contracts[0] = address(new ExampleERC20("Test", "TEST"));
+        contracts[1] = address(new ExampleERC20("Test2", "TEST2"));
+        contracts[2] = address(new ExampleERC20("Test3", "TEST3"));
         vm.stopPrank();
+
+        for (uint256 i = 0; i < contracts.length; i++) {
+            vm.startPrank(callingContractAdmin);
+            ExampleERC20(contracts[i]).setRulesEngineAddress(address(red));
+            ExampleERC20(contracts[i]).setCallingContractAdmin(callingContractAdmin);
+            RulesEnginePolicyFacet(address(red)).applyPolicy(contracts[i], policyIds);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(policyAdmin);
+        RulesEnginePolicyFacet(address(red)).closePolicy(policyIds[0]);
+        vm.stopPrank();
+
+        uint256[] memory appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(contracts[0]);
+        assertEq(appliedPolicies.length, 2);
+        assertEq(appliedPolicies[0], policyIds[1]);
+        assertEq(appliedPolicies[1], policyIds[2]);
+
+        appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(contracts[1]);
+        assertEq(appliedPolicies.length, 2);
+        assertEq(appliedPolicies[0], policyIds[1]);
+        assertEq(appliedPolicies[1], policyIds[2]);
+
+        appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(contracts[2]);
+        assertEq(appliedPolicies.length, 2);
+        assertEq(appliedPolicies[0], policyIds[1]);
+        assertEq(appliedPolicies[1], policyIds[2]);
     }
-    
-    vm.startPrank(policyAdmin);
-    RulesEnginePolicyFacet(address(red)).closePolicy(policyIds[0]);
-    vm.stopPrank();
 
-    uint256[] memory appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(contracts[0]);
-    assertEq(appliedPolicies.length, 2);
-    assertEq(appliedPolicies[0], policyIds[1]);
-    assertEq(appliedPolicies[1], policyIds[2]);
+    function testRulesArrayStillFullAfterCallingFunctionDeletion() public ifDeploymentTestsEnabled resetsGlobalVariables {
+        uint256[] memory policyIds = new uint256[](1);
+        uint256 policy1 = _createBlankPolicy();
+        policyIds[0] = policy1;
+        Rule[] memory initialRules = createArrayOfRules();
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[0], "rule1", "rule1");
+        assertEq(ruleId, 1);
+        ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[1], "rule2", "rule2");
+        assertEq(ruleId, 2);
+        ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[2], "rule3", "rule3");
+        assertEq(ruleId, 3);
 
-    appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(contracts[1]);
-    assertEq(appliedPolicies.length, 2);
-    assertEq(appliedPolicies[0], policyIds[1]);
-    assertEq(appliedPolicies[1], policyIds[2]);
+        ParamTypes[] memory pTypes = new ParamTypes[](2);
+        pTypes[0] = ParamTypes.ADDR;
+        pTypes[1] = ParamTypes.UINT;
 
-    appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(contracts[2]);
-    assertEq(appliedPolicies.length, 2);
-    assertEq(appliedPolicies[0], policyIds[1]);
-    assertEq(appliedPolicies[1], policyIds[2]);
- }
+        _addCallingFunctionToPolicy(policyIds[0]);
 
- function testRulesArrayStillFullAfterCallingFunctionDeletion() public ifDeploymentTestsEnabled resetsGlobalVariables {
-    uint256[] memory policyIds = new uint256[](1);
-    uint256 policy1 = _createBlankPolicy();
-    policyIds[0] = policy1;
-    Rule[] memory initialRules = createArrayOfRules();
-    uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[0], "rule1", "rule1");
-    assertEq(ruleId, 1);
-    ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[1], "rule2", "rule2");
-    assertEq(ruleId, 2);
-    ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[2], "rule3", "rule3");
-    assertEq(ruleId, 3);
- 
-    ParamTypes[] memory pTypes = new ParamTypes[](2);
-    pTypes[0] = ParamTypes.ADDR;
-    pTypes[1] = ParamTypes.UINT;
-
-    _addCallingFunctionToPolicy(policyIds[0]);
-
-
-    uint256 callingFunctionId1 = RulesEngineComponentFacet(address(red)).createCallingFunction(
+        RulesEngineComponentFacet(address(red)).createCallingFunction(
             policyIds[0],
             bytes4(bytes4(keccak256(bytes("transfer(address,uint256)")))),
             pTypes,
@@ -85,12 +83,12 @@ abstract contract policiesExecution is RulesEngineCommon {
             ""
         );
 
-    pTypes = new ParamTypes[](3);
-    pTypes[0] = ParamTypes.ADDR;
-    pTypes[1] = ParamTypes.ADDR;
-    pTypes[2] = ParamTypes.UINT;
+        pTypes = new ParamTypes[](3);
+        pTypes[0] = ParamTypes.ADDR;
+        pTypes[1] = ParamTypes.ADDR;
+        pTypes[2] = ParamTypes.UINT;
 
-    uint256 callingFunctionId2 = RulesEngineComponentFacet(address(red)).createCallingFunction(
+        RulesEngineComponentFacet(address(red)).createCallingFunction(
             policyIds[0],
             bytes4(bytes4(keccak256(bytes("transferFrom(address,address,uint256)")))),
             pTypes,
@@ -98,70 +96,68 @@ abstract contract policiesExecution is RulesEngineCommon {
             ""
         );
 
-    bytes4[] memory callingFunctions = new bytes4[](2);
-    callingFunctions[0] = bytes4(bytes4(keccak256(bytes("transfer(address,uint256)"))));
-    callingFunctions[1] = bytes4(bytes4(keccak256(bytes("transferFrom(address,address,uint256)"))));
-    uint256[] memory callingFunctionIds = new uint256[](2);
-    callingFunctionIds[0] = callingFunctionId1;
-    callingFunctionIds[1] = callingFunctionId2;
-    uint256[][] memory ruleIds = new uint256[][](2);
-    ruleIds[0] = new uint256[](3);
-    ruleIds[0][0] = 1;
-    ruleIds[0][1] = 2;
-    ruleIds[0][2] = 3;
-    ruleIds[1] = new uint256[](2);
-    ruleIds[1][0] = 1;
-    ruleIds[1][1] = 2;
+        bytes4[] memory callingFunctions = new bytes4[](2);
+        callingFunctions[0] = bytes4(bytes4(keccak256(bytes("transfer(address,uint256)"))));
+        callingFunctions[1] = bytes4(bytes4(keccak256(bytes("transferFrom(address,address,uint256)"))));
+        uint256[][] memory ruleIds = new uint256[][](2);
+        ruleIds[0] = new uint256[](3);
+        ruleIds[0][0] = 1;
+        ruleIds[0][1] = 2;
+        ruleIds[0][2] = 3;
+        ruleIds[1] = new uint256[](2);
+        ruleIds[1][0] = 1;
+        ruleIds[1][1] = 2;
 
-    RulesEnginePolicyFacet(address(red)).updatePolicy(
-        policyIds[0],
-        callingFunctions,
-        callingFunctionIds,
-        ruleIds,
-        PolicyType.CLOSED_POLICY,
-        "policyName",
-        "policyDescription"
-    );
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyIds[0],
+            callingFunctions,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            "policyName",
+            "policyDescription"
+        );
 
-    Rule[][] memory rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
-    assertEq(rules.length, 2);
-    assertEq(rules[0].length, 3);
-    assertEq(rules[1].length, 2);
-    assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[1][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[1][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
+        Rule[][] memory rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
+        assertEq(rules.length, 2);
+        assertEq(rules[0].length, 3);
+        assertEq(rules[1].length, 2);
+        assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[1][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[1][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
 
-    RulesEngineComponentFacet(address(red)).deleteCallingFunction(policy1, callingFunctionId2);
-    rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
-    assertEq(rules.length, 1);
-    assertEq(rules[0].length, 3);
-    assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
- }
+        RulesEngineComponentFacet(address(red)).deleteCallingFunction(
+            policy1,
+            bytes4(keccak256(bytes("transferFrom(address,address,uint256)")))
+        );
+        rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
+        assertEq(rules.length, 1);
+        assertEq(rules[0].length, 3);
+        assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
+    }
 
- function testRulesArrayStillFullAfterMultiCallingFunctionRuleDeletion() public ifDeploymentTestsEnabled resetsGlobalVariables {
-    uint256[] memory policyIds = new uint256[](1);
-    uint256 policy1 = _createBlankPolicy();
-    policyIds[0] = policy1;
-    Rule[] memory initialRules = createArrayOfRules();
-    uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[0], "rule1", "rule1");
-    assertEq(ruleId, 1);
-    ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[1], "rule2", "rule2");
-    assertEq(ruleId, 2);
-    ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[2], "rule3", "rule3");
-    assertEq(ruleId, 3);
- 
-    ParamTypes[] memory pTypes = new ParamTypes[](2);
-    pTypes[0] = ParamTypes.ADDR;
-    pTypes[1] = ParamTypes.UINT;
+    function testRulesArrayStillFullAfterMultiCallingFunctionRuleDeletion() public ifDeploymentTestsEnabled resetsGlobalVariables {
+        uint256[] memory policyIds = new uint256[](1);
+        uint256 policy1 = _createBlankPolicy();
+        policyIds[0] = policy1;
+        Rule[] memory initialRules = createArrayOfRules();
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[0], "rule1", "rule1");
+        assertEq(ruleId, 1);
+        ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[1], "rule2", "rule2");
+        assertEq(ruleId, 2);
+        ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[2], "rule3", "rule3");
+        assertEq(ruleId, 3);
 
-    _addCallingFunctionToPolicy(policyIds[0]);
+        ParamTypes[] memory pTypes = new ParamTypes[](2);
+        pTypes[0] = ParamTypes.ADDR;
+        pTypes[1] = ParamTypes.UINT;
 
+        _addCallingFunctionToPolicy(policyIds[0]);
 
-    uint256 callingFunctionId1 = RulesEngineComponentFacet(address(red)).createCallingFunction(
+        RulesEngineComponentFacet(address(red)).createCallingFunction(
             policyIds[0],
             bytes4(bytes4(keccak256(bytes("transfer(address,uint256)")))),
             pTypes,
@@ -169,12 +165,12 @@ abstract contract policiesExecution is RulesEngineCommon {
             ""
         );
 
-    pTypes = new ParamTypes[](3);
-    pTypes[0] = ParamTypes.ADDR;
-    pTypes[1] = ParamTypes.ADDR;
-    pTypes[2] = ParamTypes.UINT;
+        pTypes = new ParamTypes[](3);
+        pTypes[0] = ParamTypes.ADDR;
+        pTypes[1] = ParamTypes.ADDR;
+        pTypes[2] = ParamTypes.UINT;
 
-    uint256 callingFunctionId2 = RulesEngineComponentFacet(address(red)).createCallingFunction(
+        RulesEngineComponentFacet(address(red)).createCallingFunction(
             policyIds[0],
             bytes4(bytes4(keccak256(bytes("transferFrom(address,address,uint256)")))),
             pTypes,
@@ -182,89 +178,85 @@ abstract contract policiesExecution is RulesEngineCommon {
             ""
         );
 
-    bytes4[] memory callingFunctions = new bytes4[](2);
-    callingFunctions[0] = bytes4(bytes4(keccak256(bytes("transfer(address,uint256)"))));
-    callingFunctions[1] = bytes4(bytes4(keccak256(bytes("transferFrom(address,address,uint256)"))));
-    uint256[] memory callingFunctionIds = new uint256[](2);
-    callingFunctionIds[0] = callingFunctionId1;
-    callingFunctionIds[1] = callingFunctionId2;
-    uint256[][] memory ruleIds = new uint256[][](2);
-    ruleIds[0] = new uint256[](3);
-    ruleIds[0][0] = 1;
-    ruleIds[0][1] = 2;
-    ruleIds[0][2] = 3;
-    ruleIds[1] = new uint256[](2);
-    ruleIds[1][0] = 1;
-    ruleIds[1][1] = 2;
+        bytes4[] memory callingFunctions = new bytes4[](2);
+        callingFunctions[0] = bytes4(bytes4(keccak256(bytes("transfer(address,uint256)"))));
+        callingFunctions[1] = bytes4(bytes4(keccak256(bytes("transferFrom(address,address,uint256)"))));
+        uint256[][] memory ruleIds = new uint256[][](2);
+        ruleIds[0] = new uint256[](3);
+        ruleIds[0][0] = 1;
+        ruleIds[0][1] = 2;
+        ruleIds[0][2] = 3;
+        ruleIds[1] = new uint256[](2);
+        ruleIds[1][0] = 1;
+        ruleIds[1][1] = 2;
 
-    RulesEnginePolicyFacet(address(red)).updatePolicy(
-        policyIds[0],
-        callingFunctions,
-        callingFunctionIds,
-        ruleIds,
-        PolicyType.CLOSED_POLICY,
-        "policyName",
-        "policyDescription"
-    );
+        RulesEnginePolicyFacet(address(red)).updatePolicy(
+            policyIds[0],
+            callingFunctions,
+            ruleIds,
+            PolicyType.CLOSED_POLICY,
+            "policyName",
+            "policyDescription"
+        );
 
-    Rule[][] memory rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
-    assertEq(rules.length, 2);
-    assertEq(rules[0].length, 3);
-    assertEq(rules[1].length, 2);
-    assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[1][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[1][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
+        Rule[][] memory rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
+        assertEq(rules.length, 2);
+        assertEq(rules[0].length, 3);
+        assertEq(rules[1].length, 2);
+        assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[1][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[1][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
 
-    RulesEngineRuleFacet(address(red)).deleteRule(policy1, 2);
-    rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
-    assertEq(rules.length, 2);
-    assertEq(rules[0].length, 2);
-    assertEq(rules[1].length, 1);
-    assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[1][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
- }
+        RulesEngineRuleFacet(address(red)).deleteRule(policy1, 2);
+        rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
+        assertEq(rules.length, 2);
+        assertEq(rules[0].length, 2);
+        assertEq(rules[1].length, 1);
+        assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[1][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+    }
 
- function testRulesArrayDeletionIsStillFull() public ifDeploymentTestsEnabled resetsGlobalVariables {
-    uint256[] memory policyIds = new uint256[](1);
-    uint256 policy1 = _createBlankPolicy();
-    policyIds[0] = policy1;
-    Rule[] memory initialRules = createArrayOfRules();
-    uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[0], "rule1", "rule1");
-    assertEq(ruleId, 1);
-    ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[1], "rule2", "rule2");
-    assertEq(ruleId, 2);
-    ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[2], "rule3", "rule3");
-    assertEq(ruleId, 3);
+    function testRulesArrayDeletionIsStillFull() public ifDeploymentTestsEnabled resetsGlobalVariables {
+        uint256[] memory policyIds = new uint256[](1);
+        uint256 policy1 = _createBlankPolicy();
+        policyIds[0] = policy1;
+        Rule[] memory initialRules = createArrayOfRules();
+        uint256 ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[0], "rule1", "rule1");
+        assertEq(ruleId, 1);
+        ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[1], "rule2", "rule2");
+        assertEq(ruleId, 2);
+        ruleId = RulesEngineRuleFacet(address(red)).createRule(policy1, initialRules[2], "rule3", "rule3");
+        assertEq(ruleId, 3);
 
-    _addCallingFunctionToPolicy(policyIds[0]);
+        _addCallingFunctionToPolicy(policyIds[0]);
 
-    uint256[][] memory ruleIds = new uint256[][](1);
-    ruleIds[0] = new uint256[](3);
-    ruleIds[0][0] = 1;
-    ruleIds[0][1] = 2;
-    ruleIds[0][2] = 3;
+        uint256[][] memory ruleIds = new uint256[][](1);
+        ruleIds[0] = new uint256[](3);
+        ruleIds[0][0] = 1;
+        ruleIds[0][1] = 2;
+        ruleIds[0][2] = 3;
 
-    _addRuleIdsToPolicyOpen(policyIds[0], ruleIds);
+        _addRuleIdsToPolicyOpen(policyIds[0], ruleIds);
 
-    Rule[][] memory rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
-    assertEq(rules.length, 1);
-    assertEq(rules[0].length, 3);
-    assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
+        Rule[][] memory rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
+        assertEq(rules.length, 1);
+        assertEq(rules[0].length, 3);
+        assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[1].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][2].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
 
-    RulesEngineRuleFacet(address(red)).deleteRule(policy1, 2);
-    rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
-    assertEq(rules.length, 1);
-    assertEq(rules[0].length, 2);
-    assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
-    assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
- }
+        RulesEngineRuleFacet(address(red)).deleteRule(policy1, 2);
+        rules = RulesEngineRuleFacet(address(red)).getAllRules(policy1);
+        assertEq(rules.length, 1);
+        assertEq(rules[0].length, 2);
+        assertEq(keccak256(abi.encodePacked(rules[0][0].instructionSet)), keccak256(abi.encodePacked(initialRules[0].instructionSet)));
+        assertEq(keccak256(abi.encodePacked(rules[0][1].instructionSet)), keccak256(abi.encodePacked(initialRules[2].instructionSet)));
+    }
 
- function testPolicyExecutionOrder() public ifDeploymentTestsEnabled resetsGlobalVariables {
+    function testPolicyExecutionOrder() public ifDeploymentTestsEnabled resetsGlobalVariables {
         uint256[] memory policyIds = new uint256[](5);
         // create 5 separate policies
         uint256 policy1 = _createBlankPolicy();
@@ -309,6 +301,4 @@ abstract contract policiesExecution is RulesEngineCommon {
         appliedPolicyIds = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(userContractAddress);
         assertEq(appliedPolicyIds.length, policyIds.length);
     }
-
-
 }
