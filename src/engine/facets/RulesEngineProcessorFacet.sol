@@ -874,16 +874,17 @@ contract RulesEngineProcessorFacet is FacetCommonImports {
             // Important: Return msg.data properly formatted for dynamic bytes parameters
             // We need to create a properly encoded bytes value with length prefix
             bytes memory msgData = msg.data;
-            bytes memory encodedData = new bytes(msg.data.length + 32);
+            bytes memory encodedData = new bytes(msg.data.length + 64);
 
             // Store length in first 32 bytes
             assembly {
-                mstore(add(encodedData, 32), mload(msgData))
+                mstore(add(encodedData, 32), 0x20)
+                mstore(add(encodedData, 64), mload(msgData))
             }
 
             // Copy the actual data
             for (uint256 i = 0; i < msg.data.length; i++) {
-                encodedData[i + 32] = msg.data[i];
+                encodedData[i + 64] = msg.data[i];
             }
 
             return (encodedData, ParamTypes.BYTES);
