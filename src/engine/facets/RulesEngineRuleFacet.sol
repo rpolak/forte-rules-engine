@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
-
 import "src/engine/facets/RulesEngineAdminRolesFacet.sol";
 import "src/engine/facets/RulesEngineComponentFacet.sol";
 import {RulesEngineStorageLib as StorageLib} from "src/engine/facets/RulesEngineStorageLib.sol";
-
 /**
  * @title Rules Engine Policy Facet
  * @dev This contract serves as the primary data facet for the Rules Engine rules. It is responsible for creating, updating,
@@ -35,7 +33,7 @@ contract RulesEngineRuleFacet is FacetCommonImports {
     ) external returns (uint256) {
         if (policyId == 0) revert(POLICY_ID_0);
         _policyAdminOnly(policyId, msg.sender);
-        _validateRule(rule);
+        _validateRule(rule, policyId);
         StorageLib._notCemented(policyId);
         RuleStorage storage data = lib._getRuleStorage();
         uint256 ruleId = _incrementRuleId(data, policyId);
@@ -61,7 +59,7 @@ contract RulesEngineRuleFacet is FacetCommonImports {
     ) external returns (uint256) {
         if (policyId == 0) revert(POLICY_ID_0);
         _policyAdminOnly(policyId, msg.sender);
-        _validateRule(rule);
+        _validateRule(rule, policyId);
         if (!StorageLib._isRuleSet(policyId, ruleId)) revert(RULE_NOT_SET);
         StorageLib._notCemented(policyId);
         // Load the rule data from storage
@@ -153,6 +151,9 @@ contract RulesEngineRuleFacet is FacetCommonImports {
 
     function getMemorySize() external pure returns (uint) {
         return memorySize;
+    }
+    function getMaxLoopSize() external pure returns (uint) {
+        return MAX_LOOP;
     }
     function getOpsSize1() external pure returns (uint) {
         return opsSize1;
@@ -342,10 +343,10 @@ contract RulesEngineRuleFacet is FacetCommonImports {
         metadata.ruleMetadata[_policyId][_ruleId].ruleDescription = _description;
     }
 
-    function _validateRule(Rule calldata rule) internal pure {
+    function _validateRule(Rule calldata rule, uint256 policyId) internal view {
         // instructionSet
         if (rule.instructionSet.length == 0) revert(EMPTY_INSTRUCTION_SET); // only applies to top level instruction set
-        _validateInstructionSet(rule.instructionSet);
+        _validateInstructionSet(rule.instructionSet, policyId);
         for (uint i = 0; i < rule.rawData.argumentTypes.length; i++) {
             _validateParamType(rule.rawData.argumentTypes[i]);
         }
@@ -354,19 +355,20 @@ contract RulesEngineRuleFacet is FacetCommonImports {
         _validatePlaceholders(rule.effectPlaceHolders);
         // effects
         require(rule.posEffects.length > 0 || rule.negEffects.length > 0, EFFECT_REQ);
-        _validateEffects(rule.posEffects);
-        _validateEffects(rule.negEffects);
+        _validateEffects(rule.posEffects, policyId);
+        _validateEffects(rule.negEffects, policyId);
     }
 
     /**
      * @notice Validates an array of effects.
      * @param effects The effects to validate.
+     * @param policyId The policyId 
      */
-    function _validateEffects(Effect[] calldata effects) internal pure {
+    function _validateEffects(Effect[] calldata effects, uint256 policyId) internal view {
         for (uint256 i = 0; i < effects.length; i++) {
             _validateEffectType(effects[i].effectType);
             _validateParamType(effects[i].pType);
-            _validateInstructionSet(effects[i].instructionSet);
+            _validateInstructionSet(effects[i].instructionSet, policyId);
         }
     }
 
@@ -375,6 +377,7 @@ contract RulesEngineRuleFacet is FacetCommonImports {
      * @param placeholders The placeholders to validate.
      */
     function _validatePlaceholders(Placeholder[] calldata placeholders) internal pure {
+        if (placeholders.length > MAX_LOOP) revert(MEMORY_OVERFLOW);
         for (uint256 i = 0; i < placeholders.length; i++) {
             _validateParamType(placeholders[i].pType);
         }
@@ -383,18 +386,35 @@ contract RulesEngineRuleFacet is FacetCommonImports {
     /**
      * @notice Validates an instruction set.
      * @param instructionSet The instructionSet to validate.
+     * @param policyId The policyId.
      */
-    function _validateInstructionSet(uint256[] calldata instructionSet) internal pure {
+    function _validateInstructionSet(uint256[] calldata instructionSet, uint256 policyId) internal view {
         uint expectedDataElements; // the number of expected data elements in the instruction set (memory pointers)
         bool isData; // the first item of an instruction set must be an opcode, so isData must be "initialized" to false
         uint totalInstructions; // the total number of instructions in the instruction set (opcodes)
+        uint instructionHold; // The current instruction used as it iterates through data elements
+        uint dataCounter; // The current data element within the opCode
         // we loop through the instructionSet to validate it
         for (uint256 i = 0; i < instructionSet.length; i++) {
             // we extract the specific item from the validation set which is in memory, and we place it in the stack to save some gas
             uint instruction = instructionSet[i];
-            if (isData) {
-                // if the instruction is data, we just check that it won't point to an index outside of max memory size
-                if (instruction > memorySize) revert(MEMORY_OVERFLOW);
+            if (isData) {  
+                dataCounter++;
+                if (!_isLessLimitedOpCode(instructionHold)) {  
+                    // if the instruction is data, we just check that it won't point to an index outside of max memory size
+                    if (instruction > memorySize) revert(MEMORY_OVERFLOW);             
+                } else {
+                    // Verify that the tracker exists in the policy
+                    if (dataCounter == 1){
+                        if (instructionHold == uint(LogicalOp.PLH)) {// PLH is only limited by the Max loop size
+                            if (instruction > MAX_LOOP) revert(MEMORY_OVERFLOW);
+                        } else {
+                            TrackerStorage storage trackerData = lib._getTrackerStorage();
+                            if (!trackerData.trackers[policyId][instruction].set) revert(TRACKER_NOT_SET);
+                        }
+                    }
+
+                }
                 // we reduce the expectedDataElements count by one, but only if necessary
                 if (expectedDataElements > 1) --expectedDataElements;
                 else {
@@ -420,12 +440,28 @@ contract RulesEngineRuleFacet is FacetCommonImports {
                 else if (instruction < opsSizeUpTo3) expectedDataElements = 3;
                 else expectedDataElements = 4;
                 isData = true; // we know that following instruction(s) is a data pointer
+                dataCounter = 0;
+                instructionHold = instructionSet[i]; // load the hold variable with the actual op code
             }
         }
         // if we have any expected data elements left, it means the instruction set is invalid
         if (expectedDataElements > 0 || isData) revert(INVALID_INSTRUCTION_SET);
         // if the instruction set will overflow the memory size, we revert
         if (totalInstructions > memorySize) revert(INSTRUCTION_SET_TOO_LARGE);
+    }
+
+    /**
+     * @dev Determines whether the given operation code's data is considered "less limited" and can be upwards of the max loop size
+     * @param opCode The operation code to evaluate.
+     * @return bool Returns `true` if the operation code is less limited, otherwise `false`.
+     */
+    function _isLessLimitedOpCode(uint opCode) internal pure returns (bool) {
+        return (
+            opCode == uint(LogicalOp.PLHM) ||
+            opCode == uint(LogicalOp.PLH) ||
+            opCode == uint(LogicalOp.TRUM) ||
+            opCode == uint(LogicalOp.TRU)
+        ); 
     }
 
     /**
