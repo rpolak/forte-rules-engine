@@ -632,6 +632,7 @@ abstract contract rules is RulesEngineCommon {
         RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
     }
 
+    // todo: fix this test so that it uses a proper transferFrom signature
     function testRulesEngine_Unit_ForeignCall_Bytes_Param() public ifDeploymentTestsEnabled resetsGlobalVariables {
         uint256 policyId;
         uint256 ruleId;
@@ -687,10 +688,15 @@ abstract contract rules is RulesEngineCommon {
             rule.placeHolders[1].typeSpecificIndex = uint128(foreignCallId);
             rule.placeHolders[1].flags = uint8(FLAG_FOREIGN_CALL);
 
-            rule.effectPlaceHolders = new Placeholder[](1);
-            rule.effectPlaceHolders[0].pType = ParamTypes.BYTES;
-            rule.effectPlaceHolders[0].typeSpecificIndex = 0;
-            rule.effectPlaceHolders[0].flags = 0;
+            rule.positiveEffectPlaceHolders = new Placeholder[](1);
+            rule.positiveEffectPlaceHolders[0].pType = ParamTypes.BYTES;
+            rule.positiveEffectPlaceHolders[0].typeSpecificIndex = 0;
+            rule.positiveEffectPlaceHolders[0].flags = 0;
+
+            rule.negativeEffectPlaceHolders = new Placeholder[](1);
+            rule.negativeEffectPlaceHolders[0].pType = ParamTypes.BYTES;
+            rule.negativeEffectPlaceHolders[0].typeSpecificIndex = 0;
+            rule.negativeEffectPlaceHolders[0].flags = 0;
 
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
@@ -700,7 +706,7 @@ abstract contract rules is RulesEngineCommon {
             ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
 
             {
-                bytes4 transferSelector = ExampleUserContract.transferFrom.selector;
+                bytes4 transferSelector = bytes4(keccak256(bytes("transferFrom(address,uint256,bytes)")));
                 ParamTypes[] memory pTypes = new ParamTypes[](3);
                 pTypes[0] = ParamTypes.ADDR;
                 pTypes[1] = ParamTypes.UINT;
@@ -742,8 +748,8 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSelector(
-                ExampleUserContract.transferFrom.selector,
+            bytes memory transferCalldata = abi.encodeWithSignature(
+                "transferFrom(address,uint256,bytes)",
                 to,
                 value,
                 abi.encode("TESTER")
@@ -812,10 +818,15 @@ abstract contract rules is RulesEngineCommon {
             rule.placeHolders[1].typeSpecificIndex = uint128(foreignCallId);
             rule.placeHolders[1].flags = uint8(FLAG_FOREIGN_CALL);
 
-            rule.effectPlaceHolders = new Placeholder[](1);
-            rule.effectPlaceHolders[0].pType = ParamTypes.BYTES;
-            rule.effectPlaceHolders[0].typeSpecificIndex = 0;
-            rule.effectPlaceHolders[0].flags = 0;
+            rule.positiveEffectPlaceHolders = new Placeholder[](1);
+            rule.positiveEffectPlaceHolders[0].pType = ParamTypes.BYTES;
+            rule.positiveEffectPlaceHolders[0].typeSpecificIndex = 0;
+            rule.positiveEffectPlaceHolders[0].flags = 0;
+
+            rule.negativeEffectPlaceHolders = new Placeholder[](1);
+            rule.negativeEffectPlaceHolders[0].pType = ParamTypes.BYTES;
+            rule.negativeEffectPlaceHolders[0].typeSpecificIndex = 0;
+            rule.negativeEffectPlaceHolders[0].flags = 0;
 
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
@@ -825,7 +836,7 @@ abstract contract rules is RulesEngineCommon {
             ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
 
             {
-                bytes4 transferSelector = ExampleUserContract.transferFrom.selector;
+                bytes4 transferSelector = bytes4(keccak256(bytes("transferFrom(address,uint256,bytes)")));
                 ParamTypes[] memory pTypes = new ParamTypes[](3);
                 pTypes[0] = ParamTypes.ADDR;
                 pTypes[1] = ParamTypes.UINT;
@@ -866,8 +877,8 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSelector(
-                ExampleUserContract.transferFrom.selector,
+            bytes memory transferCalldata = abi.encodeWithSignature(
+                "transferFrom(address,uint256,bytes)",
                 to,
                 value,
                 abi.encode("TESTER")
@@ -927,7 +938,8 @@ abstract contract rules is RulesEngineCommon {
             rule.placeHolders[1].typeSpecificIndex = uint128(foreignCallId);
             rule.placeHolders[1].flags = uint8(FLAG_FOREIGN_CALL);
 
-            rule.effectPlaceHolders = new Placeholder[](0);
+            rule.positiveEffectPlaceHolders = new Placeholder[](0);
+            rule.negativeEffectPlaceHolders = new Placeholder[](0);
 
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
@@ -937,7 +949,7 @@ abstract contract rules is RulesEngineCommon {
             ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
 
             {
-                bytes4 transferSelector = ExampleUserContract.transferFrom.selector;
+                bytes4 transferSelector = bytes4(keccak256(bytes("transferFrom(address,uint256,bytes)")));
                 ParamTypes[] memory pTypes = new ParamTypes[](3);
                 pTypes[0] = ParamTypes.ADDR;
                 pTypes[1] = ParamTypes.UINT;
@@ -979,8 +991,8 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSelector(
-                ExampleUserContract.transferFrom.selector,
+            bytes memory transferCalldata = abi.encodeWithSignature(
+                "transferFrom(address,uint256,bytes)",
                 to,
                 value,
                 abi.encode("TESTER")
@@ -1037,7 +1049,8 @@ abstract contract rules is RulesEngineCommon {
             rule.placeHolders[1].typeSpecificIndex = uint128(foreignCallId);
             rule.placeHolders[1].flags = uint8(FLAG_FOREIGN_CALL);
 
-            rule.effectPlaceHolders = new Placeholder[](0);
+            rule.positiveEffectPlaceHolders = new Placeholder[](0);
+            rule.negativeEffectPlaceHolders = new Placeholder[](0);
 
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
@@ -1047,7 +1060,7 @@ abstract contract rules is RulesEngineCommon {
             ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
 
             {
-                bytes4 transferSelector = ExampleUserContract.transferFrom.selector;
+                bytes4 transferSelector = bytes4(keccak256(bytes("transferFrom(address,uint256,bytes)")));
                 ParamTypes[] memory pTypes = new ParamTypes[](3);
                 pTypes[0] = ParamTypes.ADDR;
                 pTypes[1] = ParamTypes.UINT;
@@ -1093,8 +1106,8 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSelector(
-                ExampleUserContract.transferFrom.selector,
+            bytes memory transferCalldata = abi.encodeWithSignature(
+                "transferFrom(address,uint256,bytes)",
                 to,
                 value,
                 abi.encode("TESTER")
@@ -1152,7 +1165,8 @@ abstract contract rules is RulesEngineCommon {
             rule.placeHolders[1].typeSpecificIndex = uint128(foreignCallId);
             rule.placeHolders[1].flags = uint8(FLAG_FOREIGN_CALL);
 
-            rule.effectPlaceHolders = new Placeholder[](0);
+            rule.positiveEffectPlaceHolders = new Placeholder[](0);
+            rule.negativeEffectPlaceHolders = new Placeholder[](0);
 
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
@@ -1162,7 +1176,7 @@ abstract contract rules is RulesEngineCommon {
             ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
 
             {
-                bytes4 transferSelector = ExampleUserContract.transferFrom.selector;
+                bytes4 transferSelector = bytes4(keccak256(bytes("transferFrom(address,uint256,bytes)")));
                 ParamTypes[] memory pTypes = new ParamTypes[](3);
                 pTypes[0] = ParamTypes.ADDR;
                 pTypes[1] = ParamTypes.UINT;
@@ -1208,8 +1222,8 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSelector(
-                ExampleUserContract.transferFrom.selector,
+            bytes memory transferCalldata = abi.encodeWithSignature(
+                "transferFrom(address,uint256,bytes)",
                 to,
                 value,
                 abi.encode("TESTER")
@@ -1267,7 +1281,8 @@ abstract contract rules is RulesEngineCommon {
             rule.placeHolders[1].typeSpecificIndex = uint128(foreignCallId);
             rule.placeHolders[1].flags = uint8(FLAG_FOREIGN_CALL);
 
-            rule.effectPlaceHolders = new Placeholder[](0);
+            rule.positiveEffectPlaceHolders = new Placeholder[](0);
+            rule.negativeEffectPlaceHolders = new Placeholder[](0);
 
             rule.negEffects = new Effect[](1);
             rule.negEffects[0] = effectId_revert;
@@ -1277,7 +1292,7 @@ abstract contract rules is RulesEngineCommon {
             ruleId = RulesEngineRuleFacet(address(red)).createRule(policyId, rule, ruleName, ruleDescription);
 
             {
-                bytes4 transferSelector = ExampleUserContract.transferFrom.selector;
+                bytes4 transferSelector = bytes4(keccak256(bytes("transferFrom(address,uint256,bytes)")));
                 ParamTypes[] memory pTypes = new ParamTypes[](3);
                 pTypes[0] = ParamTypes.ADDR;
                 pTypes[1] = ParamTypes.UINT;
@@ -1322,8 +1337,8 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress, txOriginAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSelector(
-                ExampleUserContract.transferFrom.selector,
+            bytes memory transferCalldata = abi.encodeWithSignature(
+                "transferFrom(address,uint256,bytes)",
                 to,
                 value,
                 abi.encode("TESTER")
@@ -1373,9 +1388,13 @@ abstract contract rules is RulesEngineCommon {
             rule.instructionSet[6] = 1;
 
             // Effect placeholders for global block.timestamp
-            rule.effectPlaceHolders = new Placeholder[](1);
-            rule.effectPlaceHolders[0].pType = ParamTypes.UINT;
-            rule.effectPlaceHolders[0].flags = uint8(GLOBAL_BLOCK_TIMESTAMP << SHIFT_GLOBAL_VAR);
+            rule.positiveEffectPlaceHolders = new Placeholder[](1);
+            rule.positiveEffectPlaceHolders[0].pType = ParamTypes.UINT;
+            rule.positiveEffectPlaceHolders[0].flags = uint8(GLOBAL_BLOCK_TIMESTAMP << SHIFT_GLOBAL_VAR);
+
+            rule.negativeEffectPlaceHolders = new Placeholder[](1);
+            rule.negativeEffectPlaceHolders[0].pType = ParamTypes.UINT;
+            rule.negativeEffectPlaceHolders[0].flags = uint8(GLOBAL_BLOCK_TIMESTAMP << SHIFT_GLOBAL_VAR);
 
             // Create effect that updates tracker with current block.timestamp
             rule.posEffects = new Effect[](1);
