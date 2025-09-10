@@ -840,6 +840,8 @@ abstract contract policies is RulesEngineCommon {
 
     function testRulesEngine_Unit_ClosedPolicySubscriber_AddRemove_Events() public ifDeploymentTestsEnabled endWithStopPrank {
         uint256 policyId = _createBlankPolicy();
+        uint256[] memory policyIds = new uint256[](1);
+        policyIds[0] = policyId;
         bytes4[] memory blankcallingFunctions = new bytes4[](0);
         uint256[][] memory blankRuleIds = new uint256[][](0);
         RulesEnginePolicyFacet(address(red)).updatePolicy(
@@ -853,10 +855,20 @@ abstract contract policies is RulesEngineCommon {
         vm.expectEmit(true, false, false, false);
         emit PolicySubsciberAdded(policyId, callingContractAdmin);
         RulesEngineComponentFacet(address(red)).addClosedPolicySubscriber(policyId, callingContractAdmin);
+        vm.startPrank(callingContractAdmin);
+        RulesEnginePolicyFacet(address(red)).applyPolicy(address(userContract), policyIds);
 
+        uint256[] memory appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(address(userContract));
+        assertEq(appliedPolicies.length, 1);
+        assertEq(appliedPolicies[0], policyId);
+
+        vm.startPrank(policyAdmin);
         vm.expectEmit(true, false, false, false);
         emit PolicySubsciberRemoved(policyId, callingContractAdmin);
         RulesEngineComponentFacet(address(red)).removeClosedPolicySubscriber(policyId, callingContractAdmin);
+
+        appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(address(userContract));
+        assertEq(appliedPolicies.length, 0);
     }
 
     // Retrieve raw data tests

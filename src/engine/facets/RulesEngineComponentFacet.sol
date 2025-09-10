@@ -611,6 +611,12 @@ contract RulesEngineComponentFacet is FacetCommonImports {
         _notCemented(policyId);
         if (subscriber == address(0)) revert(ZERO_ADDRESS);
         delete lib._getPolicyStorage().policyStorageSets[policyId].policy.closedPolicySubscribers[subscriber];
+        uint256[] memory policyIds = new uint256[](1);
+        policyIds[0] = policyId;
+        address[] memory callingContracts = lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[subscriber];
+        for (uint256 i = 0; i < callingContracts.length; i++) {
+            _unapplyPolicy(callingContracts[i], policyIds);
+        }
         emit PolicySubsciberRemoved(policyId, subscriber);
     }
 

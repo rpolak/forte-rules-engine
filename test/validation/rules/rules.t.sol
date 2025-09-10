@@ -748,12 +748,7 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
 
@@ -877,12 +872,7 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
 
@@ -991,12 +981,7 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
 
@@ -1106,12 +1091,7 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
 
@@ -1222,12 +1202,7 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
 
@@ -1337,12 +1312,7 @@ abstract contract rules is RulesEngineCommon {
             vm.startPrank(userContractAddress, txOriginAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
 

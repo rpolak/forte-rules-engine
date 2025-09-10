@@ -455,3 +455,7 @@ struct PolicyAssociationStorage {
     mapping(address contractAddress => uint256[]) contractPolicyIdMap;
     mapping(uint256 policyId => address[]) policyIdContractMap;
 }
+
+struct CallingContractAdminStorage {
+    mapping(address callingContractAdmin => address[] callingContracts) callingContractAdminToCallingContracts;
+}

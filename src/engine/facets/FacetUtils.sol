@@ -145,7 +145,7 @@ contract FacetUtils {
      * @param _contractAddress The address of the contract from which policies will be unapplied.
      * @param _policyIds The IDs of the policies to unapply.
      */
-    function _unapplyPolicy(address _contractAddress, uint256[] calldata _policyIds) internal {
+    function _unapplyPolicy(address _contractAddress, uint256[] memory _policyIds) internal {
         if (_contractAddress == address(0)) revert(ZERO_ADDRESS);
         PolicyAssociationStorage storage data = lib._getPolicyAssociationStorage();
         // Get the currently applied policyIds

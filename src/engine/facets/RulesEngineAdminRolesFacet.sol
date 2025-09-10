@@ -258,6 +258,8 @@ contract RulesEngineAdminRolesFacet is AccessControlEnumerable, ReentrancyGuard 
         // grant the admin role to the calling address of the createPolicy function from RulesEnginePolicyFacet
         _grantRole(adminRoleId, _account);
 
+        lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[_account].push(_callingContract);
+
         emit CallingContractAdminRoleGranted(_callingContract, _account);
         return adminRoleId;
     }
