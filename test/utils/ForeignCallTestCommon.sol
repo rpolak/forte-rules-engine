@@ -288,6 +288,10 @@ contract ForeignCallTestContract {
             return "other";
         }
     }
+
+    function willRevert(uint256 input) public pure returns (bool) {
+        revert();
+    }
 }
 
 contract ForeignCallTestContractOFAC {

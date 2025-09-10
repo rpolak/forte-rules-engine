@@ -169,6 +169,8 @@ abstract contract rulesEngineInternalFunctions is RulesEngineCommon {
 
         vm.startPrank(address(userContract));
 
+        // the following will revert because the callingFuncSig does not exist in the foreign call contract
+        vm.expectRevert("Failed Foreign Call");
         RulesEngineProcessorFacet(address(red)).checkPolicies(arguments);
         assertEq(foreignCall.getDecodedAddr(), address(0x567890));
     }
@@ -1751,6 +1753,30 @@ abstract contract rulesEngineInternalFunctions is RulesEngineCommon {
         // Decode the returned uint64 and verify it matches expected
         uint64 returnedValue = abi.decode(result.value, (uint64));
         assertEq(returnedValue, testValue);
+    }
+
+    function testRulesEngine_Unit_ForeignCall_FailedCallShouldRevert() public ifDeploymentTestsEnabled endWithStopPrank {
+        ForeignCallTestContract foreignCall = new ForeignCallTestContract();
+        ForeignCall memory fc;
+        fc.foreignCallAddress = address(foreignCall);
+        fc.signature = bytes4(keccak256(bytes("willRevert(uint256)")));
+        fc.parameterTypes = new ParamTypes[](1);
+        fc.parameterTypes[0] = ParamTypes.UINT;
+        fc.returnType = ParamTypes.UINT;
+        fc.encodedIndices = new ForeignCallEncodedIndex[](1);
+        fc.encodedIndices[0].index = 0;
+        fc.encodedIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
+
+        bytes memory vals = abi.encode(1);
+        bytes[] memory retVals = new bytes[](0);
+
+        ForeignCallReturnValue memory result;
+        TestProcessorFacet testProcessorFacet = new TestProcessorFacet();
+        ForeignCallEncodedIndex[] memory typeSpecificIndices = new ForeignCallEncodedIndex[](1);
+        typeSpecificIndices[0].index = 0;
+        typeSpecificIndices[0].eType = EncodedIndexType.ENCODED_VALUES;
+        vm.expectRevert("Failed Foreign Call");
+        testProcessorFacet.evaluateForeignCallForRuleExternal(fc, vals, retVals, typeSpecificIndices, 1);
     }
 
     // /// Test utility functions within ExampleUserContract.sol and RulesEngineRunRulesEngineProcessorFacet(address(red)).sol
