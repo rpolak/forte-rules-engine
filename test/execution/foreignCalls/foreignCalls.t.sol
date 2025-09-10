@@ -203,12 +203,7 @@ abstract contract foreignCalls is RulesEngineCommon, foreignCallsEdgeCases {
             vm.startPrank(userContractAddress);
             address to = address(0xBEEF);
             uint256 value = 42;
-            bytes memory transferCalldata = abi.encodeWithSignature(
-                "transferFrom(address,uint256,bytes)",
-                to,
-                value,
-                abi.encode("TESTER")
-            );
+            bytes memory transferCalldata = abi.encodeWithSignature("transferFrom(address,uint256,bytes)", to, value, abi.encode("TESTER"));
 
             vm.startSnapshotGas("checkRule_ForeignCall_Bytes");
             RulesEngineProcessorFacet(address(red)).checkPolicies(transferCalldata);
@@ -1344,7 +1339,6 @@ abstract contract foreignCalls is RulesEngineCommon, foreignCallsEdgeCases {
         ifDeploymentTestsEnabled
         endWithStopPrank
     {
-        //vm.skip(true);
         // create policy
         uint256[] memory policyIds = new uint256[](1);
         policyIds[0] = _createBlankPolicy();
@@ -1435,7 +1429,7 @@ abstract contract foreignCalls is RulesEngineCommon, foreignCallsEdgeCases {
         // we check the nft balance of user1 before we make the transfer that triggers a mint
         uint balanceBefore = nftContract.balanceOf(user1);
         bool statusBefore = testContract2.getNaughty(user1);
-        
+
         assertFalse(statusBefore);
         vm.startPrank(user1);
         vm.startSnapshotGas("checkRule_Effect_Positive_ForeignCallMint");
