@@ -1344,7 +1344,7 @@ abstract contract foreignCalls is RulesEngineCommon, foreignCallsEdgeCases {
         ifDeploymentTestsEnabled
         endWithStopPrank
     {
-        vm.skip(true);
+        //vm.skip(true);
         // create policy
         uint256[] memory policyIds = new uint256[](1);
         policyIds[0] = _createBlankPolicy();
@@ -1401,11 +1401,7 @@ abstract contract foreignCalls is RulesEngineCommon, foreignCallsEdgeCases {
         assertEq(
             value,
             abi.encode(
-                keccak256(
-                    abi.encode(
-                        "This is a string to test that the value string is above a bytes32 and does not get sliced weirdly. If you are seeing this we win!"
-                    )
-                )
+                "This is a string to test that the value string is above a bytes32 and does not get sliced weirdly. If you are seeing this we win!"
             )
         );
 
