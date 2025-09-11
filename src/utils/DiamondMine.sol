@@ -9,7 +9,7 @@ import "src/engine/facets/RulesEnginePolicyFacet.sol";
 import "src/engine/facets/RulesEngineRuleFacet.sol";
 import "src/engine/facets/RulesEngineComponentFacet.sol";
 import "src/engine/facets/RulesEngineForeignCallFacet.sol";
-import "src/engine/facets/RulesEngineAdminRolesFacet.sol";
+import {RulesEngineAdminRolesFacet} from "src/engine/facets/RulesEngineAdminRolesFacet.sol";
 import "src/engine/facets/RulesEngineInitialFacet.sol";
 import {IDiamondInit} from "diamond-std/initializers/IDiamondInit.sol";
 import {DiamondInit} from "diamond-std/initializers/DiamondInit.sol";

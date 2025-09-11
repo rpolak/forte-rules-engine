@@ -9,7 +9,7 @@ import "src/engine/facets/RulesEnginePolicyFacet.sol";
 import "src/engine/facets/RulesEngineRuleFacet.sol";
 import "src/engine/facets/RulesEngineComponentFacet.sol";
 import "src/engine/facets/RulesEngineForeignCallFacet.sol";
-import "src/engine/facets/RulesEngineAdminRolesFacet.sol";
+import {RulesEngineAdminRolesFacet} from "src/engine/facets/RulesEngineAdminRolesFacet.sol";
 import "src/engine/facets/RulesEngineInitialFacet.sol";
 import "test/utils/TestProcessorFacet.sol";
 import {IDiamondInit} from "diamond-std/initializers/IDiamondInit.sol";
@@ -224,7 +224,7 @@ contract DiamondMineNoCheatcodes is Script {
         DiamondInit diamondInit = new DiamondInit();
 
         // Build the DiamondArgs.
-         RulesEngineDiamondArgs memory diamondArgs = RulesEngineDiamondArgs({
+        RulesEngineDiamondArgs memory diamondArgs = RulesEngineDiamondArgs({
             init: address(diamondInit),
             // NOTE: "interfaceId" can be used since "init" is the only function in IDiamondInit.
             initCalldata: abi.encode(type(IDiamondInit).interfaceId)

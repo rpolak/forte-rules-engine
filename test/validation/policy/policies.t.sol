@@ -855,18 +855,22 @@ abstract contract policies is RulesEngineCommon {
         vm.expectEmit(true, false, false, false);
         emit PolicySubsciberAdded(policyId, callingContractAdmin);
         RulesEngineComponentFacet(address(red)).addClosedPolicySubscriber(policyId, callingContractAdmin);
+        // we apply the policy to make sure that the subscriber is active
         vm.startPrank(callingContractAdmin);
         RulesEnginePolicyFacet(address(red)).applyPolicy(address(userContract), policyIds);
 
+        // we check that the policy is applied
         uint256[] memory appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(address(userContract));
         assertEq(appliedPolicies.length, 1);
         assertEq(appliedPolicies[0], policyId);
 
+        // we unsubscribe the admin and expect the proper events
         vm.startPrank(policyAdmin);
         vm.expectEmit(true, false, false, false);
         emit PolicySubsciberRemoved(policyId, callingContractAdmin);
         RulesEngineComponentFacet(address(red)).removeClosedPolicySubscriber(policyId, callingContractAdmin);
 
+        // we check that the policy is no longer applied as a result of unsubscribing the admin
         appliedPolicies = RulesEnginePolicyFacet(address(red)).getAppliedPolicyIds(address(userContract));
         assertEq(appliedPolicies.length, 0);
     }

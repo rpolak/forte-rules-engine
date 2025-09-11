@@ -7,6 +7,7 @@ import "@openzeppelin/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/access/IAccessControl.sol";
 import "@openzeppelin/access/Ownable.sol";
 import "@openzeppelin/utils/ReentrancyGuard.sol";
+import "src/engine/facets/FacetUtils.sol";
 
 /**
  * @title Rules Engine Admin Roles Facet
@@ -17,7 +18,7 @@ import "@openzeppelin/utils/ReentrancyGuard.sol";
  * @notice This contract is a critical component of the Rules Engine, enabling secure and flexible role management.
  * @author @mpetersoCode55, @ShaneDuncan602, @TJ-Everett, @VoR0220
  */
-contract RulesEngineAdminRolesFacet is AccessControlEnumerable, ReentrancyGuard {
+contract RulesEngineAdminRolesFacet is AccessControlEnumerable, ReentrancyGuard, FacetUtils {
     //-------------------------------------------------------------------------------------------------------------------------------------------------------
     // Policy Admin Functions
     //-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -231,11 +232,44 @@ contract RulesEngineAdminRolesFacet is AccessControlEnumerable, ReentrancyGuard 
             _generateCallingContractAdminRoleId(callingContractAddress, CALLING_CONTRACT_ADMIN),
             0
         );
+
+        // revoke old roles
         if (!hasRole(_generateCallingContractAdminRoleId(callingContractAddress, PROPOSED_CALLING_CONTRACT_ADMIN), msg.sender))
             revert(NOT_PROPOSED_CALLING_CONTRACT_ADMIN);
         _revokeRole(_generateCallingContractAdminRoleId(callingContractAddress, PROPOSED_CALLING_CONTRACT_ADMIN), msg.sender);
         _revokeRole(_generateCallingContractAdminRoleId(callingContractAddress, CALLING_CONTRACT_ADMIN), oldCallingContractAdmin);
         _grantRole(_generateCallingContractAdminRoleId(callingContractAddress, CALLING_CONTRACT_ADMIN), msg.sender);
+        // push this calling contract the new admin
+        lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[msg.sender].push(callingContractAddress);
+        // remove this calling contract from the old admin
+        uint len = lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[oldCallingContractAdmin].length;
+        for (uint i; i < len; i++) {
+            if (
+                lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[oldCallingContractAdmin][i] ==
+                callingContractAddress
+            ) {
+                lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[oldCallingContractAdmin][i] = lib
+                    ._getCallingContractAdminStorage()
+                    .callingContractAdminToCallingContracts[oldCallingContractAdmin][len - 1];
+                lib._getCallingContractAdminStorage().callingContractAdminToCallingContracts[oldCallingContractAdmin].pop();
+                break;
+            }
+        }
+        // unapply all policies from this calling contract applied by this old admin if new admin is not a subscriber to these policies
+        uint256[] memory policyIds = lib._getPolicyAssociationStorage().contractPolicyIdMap[callingContractAddress];
+        uint policiesToRemove;
+        uint[] memory policiesToRemoveArray = new uint256[](policyIds.length);
+        for (uint256 i = 0; i < policyIds.length; i++) {
+            if (!lib._getPolicyStorage().policyStorageSets[policyIds[i]].policy.closedPolicySubscribers[msg.sender]) {
+                policiesToRemoveArray[policiesToRemove] = policyIds[i];
+                ++policiesToRemove;
+            }
+        }
+        uint[] memory policies = new uint256[](policiesToRemove);
+        for (uint256 j = 0; j < policiesToRemove; j++) {
+            policies[j] = policiesToRemoveArray[j];
+        }
+        _unapplyPolicy(callingContractAddress, policies);
         emit CallingContractAdminRoleConfirmed(callingContractAddress, msg.sender);
     }
 

@@ -69,7 +69,7 @@ contract RulesEngineCommon is DiamondMine, Test {
 
     uint8 constant FLAG_FOREIGN_CALL = 0x01; // 00000001
     uint8 constant FLAG_TRACKER_VALUE = 0x02; // 00000010
-    uint8 constant MASK_GLOBAL_VAR = 0x1C; // 00011100
+    // uint8 constant MASK_GLOBAL_VAR = 0x1C; // 00011100
 
     // Global variable type constants
     uint8 constant SHIFT_GLOBAL_VAR = 2;
@@ -595,7 +595,7 @@ contract RulesEngineCommon is DiamondMine, Test {
         rule1.negativeEffectPlaceHolders = new Placeholder[](1);
         rule1.negativeEffectPlaceHolders[0].pType = ParamTypes.UINT;
         rule1.negativeEffectPlaceHolders[0].typeSpecificIndex = 1;
-        
+
         rule1.posEffects = new Effect[](1);
         rule1.posEffects[0] = effectId_revert;
         rule1.negEffects = new Effect[](1);
@@ -1187,7 +1187,11 @@ contract RulesEngineCommon is DiamondMine, Test {
             fc.foreignCallAddress = address(testContract2);
             fc.signature = bytes4(keccak256(("addToNaughtyList(address)")));
             fc.returnType = ParamTypes.VOID;
-            fc.foreignCallIndex = RulesEngineForeignCallFacet(address(red)).createForeignCall(policyIds[0], fc, "addToNaughtyList(address)");
+            fc.foreignCallIndex = RulesEngineForeignCallFacet(address(red)).createForeignCall(
+                policyIds[0],
+                fc,
+                "addToNaughtyList(address)"
+            );
             banCallId = fc.foreignCallIndex;
         }
 
@@ -2408,7 +2412,14 @@ contract RulesEngineCommon is DiamondMine, Test {
         /// create tracker name
         string memory trackerName = "tracker1";
         // Add the tracker
-        RulesEngineComponentFacet(address(red)).createMappedTracker(policyIds[0], tracker, trackerName, trackerKeys, trackerValues, TrackerArrayTypes.VOID);
+        RulesEngineComponentFacet(address(red)).createMappedTracker(
+            policyIds[0],
+            tracker,
+            trackerName,
+            trackerKeys,
+            trackerValues,
+            TrackerArrayTypes.VOID
+        );
     }
 
     function _createForeignCallUsingMappedTrackerValueHelper(
