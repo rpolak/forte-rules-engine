@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "src/engine/facets/FacetCommonImports.sol";
 import "src/engine/facets/RulesEngineAdminRolesFacet.sol";
 import {RulesEngineStorageLib as StorageLib} from "src/engine/facets/RulesEngineStorageLib.sol";
+import {InternalFunctions} from "src/engine/facets/InternalFunctions.sol";
 
 /**
  * @title Rules Engine Policy Facet
@@ -13,7 +14,7 @@ import {RulesEngineStorageLib as StorageLib} from "src/engine/facets/RulesEngine
  * @notice This contract is a critical component of the Rules Engine, enabling secure and flexible policy management.
  * @author @mpetersoCode55, @ShaneDuncan602, @TJ-Everett, @VoR0220
  */
-contract RulesEnginePolicyFacet is FacetCommonImports {
+contract RulesEnginePolicyFacet is FacetCommonImports, InternalFunctions {
     //-------------------------------------------------------------------------------------------------------------------------------------------------------
     // Policy Management
     //-------------------------------------------------------------------------------------------------------------------------------------------------------

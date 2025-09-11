@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "src/engine/facets/FacetCommonImports.sol";
 import {RulesEngineStorageLib as StorageLib} from "src/engine/facets/RulesEngineStorageLib.sol";
+import {InternalFunctions} from "src/engine/facets/InternalFunctions.sol";
 
 /**
  * @title Rules Engine Component Facet
@@ -13,7 +14,7 @@ import {RulesEngineStorageLib as StorageLib} from "src/engine/facets/RulesEngine
  * @notice This contract is a critical component of the Rules Engine, enabling secure and flexible data management.
  * @author @mpetersoCode55, @ShaneDuncan602, @TJ-Everett, @VoR0220
  */
-contract RulesEngineComponentFacet is FacetCommonImports {
+contract RulesEngineComponentFacet is FacetCommonImports, InternalFunctions {
     //-------------------------------------------------------------------------------------------------------------------------------------------------------
     // Tracker Management
     //-------------------------------------------------------------------------------------------------------------------------------------------------------

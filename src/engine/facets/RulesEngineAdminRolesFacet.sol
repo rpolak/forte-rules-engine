@@ -7,7 +7,7 @@ import "@openzeppelin/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/access/IAccessControl.sol";
 import "@openzeppelin/access/Ownable.sol";
 import "@openzeppelin/utils/ReentrancyGuard.sol";
-import "src/engine/facets/FacetUtils.sol";
+import "src/engine/facets/InternalFunctions.sol";
 
 /**
  * @title Rules Engine Admin Roles Facet
@@ -18,7 +18,7 @@ import "src/engine/facets/FacetUtils.sol";
  * @notice This contract is a critical component of the Rules Engine, enabling secure and flexible role management.
  * @author @mpetersoCode55, @ShaneDuncan602, @TJ-Everett, @VoR0220
  */
-contract RulesEngineAdminRolesFacet is AccessControlEnumerable, ReentrancyGuard, FacetUtils {
+contract RulesEngineAdminRolesFacet is AccessControlEnumerable, ReentrancyGuard, InternalFunctions {
     //-------------------------------------------------------------------------------------------------------------------------------------------------------
     // Policy Admin Functions
     //-------------------------------------------------------------------------------------------------------------------------------------------------------
