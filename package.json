@@ -1,5 +1,5 @@
 {
-  "name": "@fortefoundation/forte-rules-engine",
+  "name": "@rpolak/forte-rules-engine",
   "version": "0.4.0",
   "description": "Forte Rules Engine",
   "files": [
@@ -24,11 +24,11 @@
     "forte",
     "rules engine"
   ],
-  "author": "Forte",
-  "homepage": "https://github.com/Forte-Service-Company-Ltd/forte-rules-engine#readme",
+  "author": "R. Polak",
+  "homepage": "https://github.com/rpolak/forte-rules-engine#readme",
   "license": "BUSL-1.1",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Forte-Service-Company-Ltd/forte-rules-engine.git"
+    "url": "git+https://github.com/rpolak/forte-rules-engine.git"
   }
 }
